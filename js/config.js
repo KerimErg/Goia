@@ -3,17 +3,15 @@
    --------------------------------------------------------------------------
    Toutes les informations pratiques du bar sont ici, en un seul endroit.
    Modifiez les valeurs entre guillemets, enregistrez, c'est tout.
+   Ce fichier est lu à la fois par le site ET par le serveur de réservation
+   (créneaux, capacité) : il ne doit contenir AUCUN mot de passe ni clé secrète.
+   Les secrets vont dans Vercel → Settings → Environment Variables (voir README).
    (Pensez aussi à mettre à jour le bloc "Schema.org" en bas de index.html
    et les pages impressum.html / datenschutz.html si l'adresse change.)
    ========================================================================== */
 
-window.GOIA_CONFIG = {
-  /* ---- Envoi des réservations -------------------------------------------
-     Clé d'accès Web3Forms (gratuite) : https://web3forms.com
-     → saisissez l'email qui doit recevoir les réservations, copiez la clé
-       reçue par email et collez-la ci-dessous à la place du texte.        */
-  web3formsKey: "VOTRE_CLE_WEB3FORMS_ICI",
-
+(function (root) {
+const GOIA_CONFIG = {
   /* ---- Contact ---------------------------------------------------------- */
   phone: "+4978510000000",          // format international, sans espaces (lien tel:)
   phoneDisplay: "+49 7851 000 0000", // tel qu'affiché sur le site
@@ -53,6 +51,34 @@ window.GOIA_CONFIG = {
     slotMinutes: 30,          // intervalle entre deux créneaux proposés
     lastSlotBeforeClose: 90,  // dernier créneau X minutes avant la fermeture
     maxDaysAhead: 60,         // réservation possible jusqu'à X jours à l'avance
-    maxPersons: 12,           // au-delà : on invite à appeler
+    maxPersons: 12,           // maximum par réservation (au-delà : on invite à appeler)
+    maxPersonsPerSlot: 20,    // CAPACITÉ : nombre total de personnes par créneau horaire
+    cancelHoursBefore: 2,     // le client peut annuler en ligne jusqu'à X heures avant
+    preorderMaxPerItem: 3,    // pré-commande de chichas : maximum par parfum
   },
+
+  /* ---- Espaces proposés à l'étape 1 de la réservation --------------------
+     Simple préférence (la capacité reste celle du créneau).
+     minPersons : espace proposé seulement à partir de X personnes.
+     recommended : affiche le badge « Recommandé ».
+     Pour supprimer cette étape : zones: []                                  */
+  zones: [
+    { id: "indifferent", recommended: true,
+      name: { fr: "Peu importe", de: "Egal" },
+      desc: { fr: "Nous vous plaçons au mieux selon l'affluence.", de: "Wir finden den besten freien Platz für euch." } },
+    { id: "lounge",
+      name: { fr: "Salon lounge", de: "Lounge" },
+      desc: { fr: "Canapés, lumière tamisée, au cœur de l'ambiance.", de: "Sofas, gedämpftes Licht, mitten im Geschehen." } },
+    { id: "terrasse",
+      name: { fr: "Terrasse", de: "Terrasse" },
+      desc: { fr: "Chauffée en hiver, selon la météo.", de: "Im Winter beheizt, je nach Wetter." } },
+    { id: "carre", minPersons: 6,
+      name: { fr: "Carré privé", de: "Private Ecke" },
+      desc: { fr: "Un espace rien que pour votre groupe, dès 6 personnes.", de: "Ein eigener Bereich für eure Gruppe, ab 6 Personen." } },
+  ],
 };
+
+// Rend la configuration disponible pour le navigateur et pour le serveur (Vercel)
+if (typeof module !== "undefined" && module.exports) module.exports = GOIA_CONFIG;
+else root.GOIA_CONFIG = GOIA_CONFIG;
+})(typeof window !== "undefined" ? window : globalThis);

@@ -116,8 +116,6 @@ p { margin: 0; }
 .btn--gold:hover { box-shadow: 0 10px 34px -8px rgba(201, 164, 92, .75); transform: translateY(-1px); }
 .btn--ghost { border-color: rgba(238, 231, 218, .28); background: rgba(255, 255, 255, .02); color: var(--text); }
 .btn--ghost:hover { border-color: var(--gold); color: var(--gold-light); }
-.btn--whatsapp { background: #1f8f4e; color: #fff; }
-.btn--whatsapp:hover { background: #22a35a; }
 .btn--block { width: 100%; }
 .btn[disabled] { opacity: .6; cursor: progress; }
 
@@ -381,14 +379,6 @@ p { margin: 0; }
 .quick-book .btn { flex: 1 1 200px; }
 @media (min-width: 560px) { .quick-book .btn { flex: 0 1 auto; } }
 
-.booking, .booking-success {
-  background: linear-gradient(180deg, rgba(30, 28, 34, .9), rgba(22, 21, 26, .9));
-  border: 1px solid var(--line);
-  border-radius: calc(var(--radius) + 6px);
-  padding: 1.5rem 1.25rem;
-  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .8);
-}
-@media (min-width: 640px) { .booking, .booking-success { padding: 2.25rem; } }
 
 .field { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1.1rem; }
 .field-row { display: grid; gap: 0 1rem; }
@@ -448,15 +438,15 @@ p { margin: 0; }
   background: rgba(232, 138, 122, .1); border: 1px solid rgba(232, 138, 122, .35); color: var(--error);
 }
 
-.booking-success { text-align: center; animation: fadeUp .6s var(--ease); }
-.booking-success:focus { outline: none; }
-.booking-success__icon {
-  width: 64px; height: 64px; margin: 0 auto 1.2rem; border-radius: 50%;
-  display: grid; place-items: center; font-size: 1.8rem;
-  background: rgba(201, 164, 92, .12); color: var(--gold); border: 1px solid rgba(201, 164, 92, .4);
+.slot-alternatives { display: flex; flex-wrap: wrap; gap: .5rem; margin: -.5rem 0 1.25rem; }
+.slot-chip {
+  min-height: 44px; min-width: 76px; padding: .5rem 1rem; border-radius: 999px;
+  border: 1px solid var(--gold); background: rgba(201, 164, 92, .1); color: var(--gold-light);
+  font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color .25s, color .25s;
 }
-.booking-success h3 { font-size: 2.2rem; margin-bottom: .8rem; }
-.booking-success p { color: rgba(238, 231, 218, .85); max-width: 42ch; margin: 0 auto 1.6rem; }
+.slot-chip:hover, .slot-chip:focus-visible { background: var(--gold); color: #1a140a; }
+.field select option:disabled { color: var(--muted); }
+
 
 /* ---------- Infos pratiques ---------- */
 .info { display: grid; gap: 1.25rem; }

@@ -12,9 +12,10 @@
 </head>
 <body>
   <!--
-    ⚠️ MODÈLE À COMPLÉTER — remplacez les passages surlignés [ … ] et
-    adaptez la section « Hosting » à l'hébergeur choisi (Netlify, Vercel,
-    GitHub Pages…). Ce texte est un modèle, pas un conseil juridique.
+    ⚠️ MODÈLE À COMPLÉTER — remplacez les passages surlignés [ … ]
+    (adresses des prestataires, région Supabase, date de mise à jour).
+    Pensez à accepter les DPA (contrats de sous-traitance) de Vercel,
+    Supabase et Resend. Ce texte est un modèle, pas un conseil juridique.
   -->
   <header class="nav is-scrolled nav--simple">
     <div class="nav__inner container">
@@ -43,18 +44,25 @@
       <p>Wir verarbeiten personenbezogene Daten nur, soweit dies zum Betrieb dieser Website und zur Bearbeitung deiner Anfragen erforderlich ist. Diese Website setzt <strong>keine Tracking- oder Marketing-Cookies</strong> ein und nutzt keine Analyse-Tools. Schriftarten werden lokal von unserem Server geladen; es findet keine Verbindung zu Google Fonts statt.</p>
 
       <h2>3. Hosting und Server-Logfiles</h2>
-      <p>Diese Website wird gehostet bei <span class="todo">[Anbieter, z. B. Netlify Inc., 512 2nd Street, San Francisco, CA 94107, USA]</span>. Beim Aufruf der Website werden automatisch technisch notwendige Daten verarbeitet (IP-Adresse, Datum und Uhrzeit, aufgerufene Seite, Browsertyp). Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren und stabilen Betrieb). Mit dem Anbieter besteht ein Auftragsverarbeitungsvertrag. <span class="todo">[Bei Anbietern in den USA: Die Übermittlung erfolgt auf Grundlage des EU-US Data Privacy Framework bzw. von EU-Standardvertragsklauseln.]</span></p>
+      <p>Diese Website und die Reservierungsfunktion werden bei <strong>Vercel Inc.</strong> (USA) gehostet <span class="todo">[Anschrift laut vercel.com/legal/privacy-policy prüfen]</span>. Beim Aufruf der Website werden automatisch technisch notwendige Daten verarbeitet (IP-Adresse, Datum und Uhrzeit, aufgerufene Seite, Browsertyp). Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren und stabilen Betrieb). Mit Vercel besteht ein Auftragsverarbeitungsvertrag (Data Processing Addendum); die Übermittlung in die USA erfolgt auf Grundlage des EU-US Data Privacy Framework bzw. von EU-Standardvertragsklauseln.</p>
 
       <h2>4. Lokale Speicherung im Browser</h2>
       <p>Wir speichern im lokalen Speicher deines Browsers (localStorage) lediglich, dass du die Altersabfrage bestätigt hast, sowie deine gewählte Sprache. Diese Angaben verlassen dein Gerät nicht und sind für die von dir gewünschte Funktion unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Du kannst sie jederzeit über die Einstellungen deines Browsers löschen.</p>
 
-      <h2>5. Reservierungsformular</h2>
-      <p>Wenn du über das Formular eine Reservierung anfragst, verarbeiten wir Name, Telefonnummer, E-Mail-Adresse, Datum, Uhrzeit, Personenzahl, deine optionale Nachricht sowie deine Bestätigung der Volljährigkeit. Zweck ist die Bearbeitung und Bestätigung deiner Reservierung; Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (vorvertragliche Maßnahmen).</p>
-      <p>Für die Übermittlung der Formulardaten per E-Mail nutzen wir den Dienst <strong>Web3Forms</strong> <span class="todo">[Anbieter und Anschrift laut web3forms.com eintragen]</span>. Die Daten werden dabei an die Server des Anbieters übertragen und an unser E-Mail-Postfach weitergeleitet. Weitere Informationen: <a href="https://web3forms.com/privacy" target="_blank" rel="noopener">web3forms.com/privacy</a>. <span class="todo">[Bei Nutzung von Formspree stattdessen: Formspree Inc., USA – formspree.io/legal/privacy-policy]</span></p>
-      <p>Wir löschen Reservierungsdaten, sobald sie für die Abwicklung nicht mehr erforderlich sind, spätestens nach <span class="todo">[3]</span> Monaten, sofern keine gesetzlichen Aufbewahrungspflichten bestehen.</p>
+      <h2>5. Online-Reservierung</h2>
+      <p>Wenn du online reservierst, verarbeiten wir Name, Telefonnummer, E-Mail-Adresse, Datum, Uhrzeit, Personenzahl, deinen Bereichswunsch, eine optionale Shisha-Vorbestellung, deine optionale Nachricht, die gewählte Sprache sowie deine Bestätigung der Volljährigkeit. Zweck ist die Durchführung deiner Reservierung (Bestätigung, Verwaltung, Stornierung) und die Planung unserer Kapazitäten; Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertrag bzw. vorvertragliche Maßnahmen).</p>
+      <p>Mit der Bestätigung erhältst du eine Reservierungsnummer und einen persönlichen Link, über den du deine Reservierung ansehen und stornieren kannst. Der Link enthält einen zufälligen Geheimschlüssel; wir speichern davon nur eine nicht umkehrbare Prüfsumme. Gib den Link daher nicht weiter.</p>
+      <h3>Speicherung (Supabase)</h3>
+      <p>Die Reservierungen werden in einer Datenbank des Dienstes <strong>Supabase</strong> (Supabase Inc.) gespeichert <span class="todo">[Anschrift laut supabase.com/privacy prüfen]</span>. Die Datenbank befindet sich in einem Rechenzentrum in der EU (<span class="todo">[Region, z. B. Frankfurt / eu-central-1]</span>). Zugriff haben ausschließlich wir über einen passwortgeschützten Verwaltungsbereich. Mit Supabase besteht ein Auftragsverarbeitungsvertrag (DPA); soweit Daten in Drittländer übermittelt werden können, erfolgt dies auf Grundlage von EU-Standardvertragsklauseln.</p>
+      <h3>E-Mail-Versand (Resend)</h3>
+      <p>Für die automatischen E-Mails (Reservierungsbestätigung, Stornierungen sowie interne Benachrichtigungen an uns) nutzen wir den Dienst <strong>Resend</strong> (Plus Five Five, Inc., USA) <span class="todo">[Anschrift laut resend.com/legal/privacy-policy prüfen]</span>. Dabei werden Name, E-Mail-Adresse und die Reservierungsdetails an Resend übermittelt. Mit Resend besteht ein Auftragsverarbeitungsvertrag (DPA); die Übermittlung in die USA erfolgt auf Grundlage des EU-US Data Privacy Framework bzw. von EU-Standardvertragsklauseln.</p>
+      <h3>Schutz vor Missbrauch</h3>
+      <p>Um automatisierte Massenanfragen (Spam) zu verhindern, begrenzen wir die Anzahl der Anfragen pro Internetanschluss und pro E-Mail-Adresse. Dazu speichern wir lediglich eine nicht umkehrbare, verschlüsselte Kennung (Hash) deiner IP-Adresse bzw. E-Mail-Adresse – niemals die IP-Adresse selbst – für höchstens 2 Tage. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren Betrieb).</p>
+      <h3>Speicherdauer</h3>
+      <p>Reservierungsdaten werden <strong>automatisch 6 Monate nach dem Reservierungsdatum gelöscht</strong>, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Auf Anfrage löschen wir deine Daten auch früher.</p>
 
-      <h2>6. Reservierung per WhatsApp oder Telefon</h2>
-      <p>Der Button „Per WhatsApp reservieren“ ist ein einfacher Link. Erst wenn du ihn anklickst, wird WhatsApp (WhatsApp Ireland Ltd., Merrion Road, Dublin 4, Irland) geöffnet und die dort geltenden Datenschutzbestimmungen finden Anwendung. Daten, die du uns per WhatsApp oder Telefon mitteilst, verwenden wir ausschließlich zur Bearbeitung deiner Reservierung (Art. 6 Abs. 1 lit. b DSGVO).</p>
+      <h2>6. Kontakt per Telefon oder WhatsApp</h2>
+      <p>Das WhatsApp-Symbol ist ein einfacher Link. Erst wenn du ihn anklickst, wird WhatsApp (WhatsApp Ireland Ltd., Merrion Road, Dublin 4, Irland) geöffnet und die dort geltenden Datenschutzbestimmungen finden Anwendung. Daten, die du uns per WhatsApp oder Telefon mitteilst, verwenden wir ausschließlich zur Bearbeitung deines Anliegens (Art. 6 Abs. 1 lit. b DSGVO).</p>
 
       <h2>7. Google Maps</h2>
       <p>Auf unserer Website kann eine Karte von Google Maps (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland) angezeigt werden. Die Karte wird <strong>erst nach deinem Klick</strong> auf „Karte anzeigen“ geladen. Erst dann werden Daten, insbesondere deine IP-Adresse, an Google übertragen, ggf. auch in die USA. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG). Details: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>. Ohne deinen Klick findet keine Verbindung zu Google statt.</p>
@@ -83,13 +91,19 @@
       <p>Ce site n'utilise <strong>aucun cookie de suivi ni outil de statistiques</strong>. Les polices sont hébergées sur notre propre serveur. Seuls votre confirmation d'âge et votre choix de langue sont mémorisés dans votre navigateur (localStorage) ; ces informations ne quittent pas votre appareil.</p>
 
       <h3>Hébergement</h3>
-      <p>Le site est hébergé par <span class="todo">[hébergeur]</span>. Les données techniques de connexion (adresse IP, date, page consultée) sont traitées pour assurer la sécurité du site (art. 6, par. 1, f RGPD).</p>
+      <p>Le site et le système de réservation sont hébergés par <strong>Vercel Inc.</strong> (États-Unis). Les données techniques de connexion (adresse IP, date, page consultée) sont traitées pour assurer la sécurité du site (art. 6, par. 1, f RGPD). Les transferts vers les États-Unis reposent sur le EU-US Data Privacy Framework ou les clauses contractuelles types.</p>
 
-      <h3>Formulaire de réservation</h3>
-      <p>Les données saisies (nom, téléphone, email, date, heure, nombre de personnes, message, confirmation de majorité) servent uniquement à traiter votre réservation (art. 6, par. 1, b RGPD). Elles sont transmises par email via le service <strong>Web3Forms</strong> et supprimées au plus tard <span class="todo">[3]</span> mois après votre visite.</p>
+      <h3>Réservation en ligne</h3>
+      <p>Les données saisies (nom, téléphone, email, date, heure, nombre de personnes, espace souhaité, pré-commande de chichas, message, langue, confirmation de majorité) servent uniquement à gérer votre réservation : confirmation, modification de statut, annulation (art. 6, par. 1, b RGPD). Vous recevez un numéro de réservation et un lien personnel pour consulter ou annuler votre réservation : il contient une clé secrète dont nous ne conservons qu'une empreinte non réversible, ne le partagez pas.</p>
+      <ul>
+        <li><strong>Stockage :</strong> les réservations sont enregistrées dans une base de données <strong>Supabase</strong>, hébergée dans un centre de données de l'Union européenne <span class="todo">[région]</span>. Seule l'équipe du Goia y a accès, via un espace protégé par mot de passe.</li>
+        <li><strong>Emails :</strong> les emails automatiques (confirmation, annulation, notifications internes) sont envoyés via le service <strong>Resend</strong> (États-Unis), qui reçoit pour cela votre nom, votre email et les détails de la réservation.</li>
+        <li><strong>Anti-spam :</strong> pour limiter les envois abusifs, nous conservons au maximum 2 jours une empreinte chiffrée et non réversible de votre adresse IP et de votre email (jamais l'adresse IP elle-même).</li>
+        <li><strong>Durée de conservation :</strong> les réservations sont <strong>supprimées automatiquement 6 mois après la date réservée</strong>. Sur simple demande, nous les supprimons plus tôt.</li>
+      </ul>
 
       <h3>WhatsApp, Google Maps, réseaux sociaux</h3>
-      <p>Le bouton WhatsApp et les icônes Instagram / TikTok sont de simples liens : aucune donnée n'est transmise avant votre clic. La carte Google Maps n'est chargée qu'après avoir cliqué sur « Afficher la carte » ; votre adresse IP est alors transmise à Google (art. 6, par. 1, a RGPD — consentement).</p>
+      <p>L'icône WhatsApp et les icônes Instagram / TikTok sont de simples liens : aucune donnée n'est transmise avant votre clic. La carte Google Maps n'est chargée qu'après avoir cliqué sur « Afficher la carte » ; votre adresse IP est alors transmise à Google (art. 6, par. 1, a RGPD — consentement).</p>
 
       <h3>Vos droits</h3>
       <p>Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité et d'opposition (art. 15 à 21 RGPD), ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle (en Allemagne : LfDI Baden-Württemberg ; en France : CNIL).</p>
