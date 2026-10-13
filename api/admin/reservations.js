@@ -1,73 +1,96 @@
-/* GET /api/admin/reservations — Liste et tableau de bord (admin).
-   Paramètres : from, to (AAAA-MM-JJ), statut, q (recherche : référence, nom,
-   email, téléphone). Par défaut : ce soir et les jours suivants, triés par date
-   puis heure (dans l'ordre de la soirée : 00:30 après 23:30). */
+/* Panneau admin — réservations d'une soirée.
+   GET  /api/admin/reservations?date=AAAA-MM-JJ
+        → réservations triées par heure, personnes par créneau, blocages, capacité
+   POST /api/admin/reservations  { date, time, persons, name, phone, email?, message?, lang?, sendEmail?, force? }
+        → ajout manuel (réservation prise par téléphone), compte dans les disponibilités.
+          Si le créneau est complet ou bloqué : 409, l'admin peut confirmer avec force: true. */
 
 "use strict";
 
 const CONFIG = require("../../js/config.js");
 const RULES = require("../../js/rules.js");
 const db = require("../_lib/supabase");
-const { send } = require("../_lib/http");
+const { send, readJson } = require("../_lib/http");
 const { requireAdmin } = require("../_lib/auth");
-const { capacity, STATUSES, ACTIVE_STATUSES } = require("../_lib/booking");
+const { getCapacity, presentAt, validateBooking, insertReservation, ACTIVE_STATUSES, eveningMinutes } = require("../_lib/booking");
+const { sendCustomerEmail, manageUrl } = require("../_lib/emails");
 
-const sortEvening = (rows) => rows.sort((a, b) => a.date.localeCompare(b.date) ||
-  RULES.eveningOrder(a.heure) - RULES.eveningOrder(b.heure) || a.cree_le.localeCompare(b.cree_le));
+/** « Ce soir » : avant 6 h du matin, c'est encore la soirée de la veille. */
+function tonight() {
+  const now = RULES.nowInKehl();
+  return now.minutes < 6 * 60 ? RULES.addDays(now.ymd, -1) : now.ymd;
+}
 
-/** Indicateurs du tableau de bord (comme les 4 cartes du site de location). */
-async function dashboard(tonight) {
-  const in7 = RULES.addDays(tonight, 6);
-  const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
-  const [week, cancelled] = await Promise.all([
-    db.select(`reservations?select=date,heure,personnes&date=gte.${tonight}&date=lte.${in7}&statut=in.(${ACTIVE_STATUSES.join(",")})&limit=2000`),
-    db.select(`reservations?select=annule_par&statut=eq.annulee&traite_le=gte.${encodeURIComponent(since30)}&limit=2000`),
+async function dayView(date) {
+  const [capacity, rows, blocks] = await Promise.all([
+    getCapacity(),
+    db.select(`reservations?select=*&date=eq.${date}&limit=1000`),
+    db.select(`blocages?select=*&date=eq.${date}&order=heure_debut.asc.nullsfirst`),
   ]);
-  const tonightRows = week.filter((r) => r.date === tonight);
-  const perSlot = {};
-  tonightRows.forEach((r) => { const t = String(r.heure).slice(0, 5); perSlot[t] = (perSlot[t] || 0) + r.personnes; });
-  const peak = Math.max(0, ...Object.values(perSlot));
+  rows.forEach((r) => { r.heure = String(r.heure).slice(0, 5); delete r.token_hash; });
+  rows.sort((a, b) => RULES.eveningOrder(a.heure) - RULES.eveningOrder(b.heure) || a.cree_le.localeCompare(b.cree_le));
+  const active = rows.filter((r) => ACTIVE_STATUSES.includes(r.statut));
+
+  // Par créneau : arrivées, personnes présentes (réservations de 2 h qui se chevauchent), blocage
+  const slots = RULES.daySlotMinutes(CONFIG, date).map((m) => {
+    const time = RULES.fromMinutes(m);
+    const blocked = blocks.some((b) => !b.heure_debut || (m >= eveningMinutes(b.heure_debut) && m < eveningMinutes(b.heure_fin)));
+    return {
+      time,
+      arriving: active.filter((r) => r.heure === time).reduce((n, r) => n + r.personnes, 0),
+      present: presentAt(active, m),
+      blocked,
+    };
+  });
+  blocks.forEach((b) => {
+    if (b.heure_debut) { b.heure_debut = b.heure_debut.slice(0, 5); b.heure_fin = b.heure_fin.slice(0, 5); }
+  });
+
   return {
-    tonight: { reservations: tonightRows.length, persons: tonightRows.reduce((n, r) => n + r.personnes, 0) },
-    peakOccupancy: Math.round((peak / capacity()) * 100),
-    week: { reservations: week.length, persons: week.reduce((n, r) => n + r.personnes, 0) },
-    cancelled30: { total: cancelled.length, byClient: cancelled.filter((r) => r.annule_par === "client").length },
+    date,
+    tonight: tonight(),
+    capacity,
+    open: !!RULES.dayRange(CONFIG, RULES.weekdayOf(date)),
+    totals: {
+      reservations: active.length,
+      persons: active.reduce((n, r) => n + r.personnes, 0),
+      peak: Math.max(0, ...slots.map((s) => s.present)),
+    },
+    slots,
+    blocks,
+    reservations: rows,
   };
 }
 
 module.exports = async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return send(res, 405, { error: "method_not_allowed" });
-  }
-
-  const params = new URL(req.url, "http://x").searchParams;
-  const now = RULES.nowInKehl();
-  // Avant 6 h du matin, la « soirée en cours » est encore celle de la veille
-  const tonight = now.minutes < 6 * 60 ? RULES.addDays(now.ymd, -1) : now.ymd;
-  const from = RULES.isYmd(params.get("from")) ? params.get("from") : tonight;
-  const to = RULES.isYmd(params.get("to")) ? params.get("to") : RULES.addDays(from, CONFIG.reservation.maxDaysAhead + 1);
-  const statut = STATUSES.includes(params.get("statut")) ? params.get("statut") : "";
-  // Recherche : on ne garde que des caractères sûrs pour la syntaxe de filtre PostgREST
-  const q = String(params.get("q") || "").replace(/[^\p{L}\p{N}@.+\- ]/gu, "").trim().slice(0, 60);
-
-  let filter = `date=gte.${from}&date=lte.${to}`;
-  if (q) {
-    const like = encodeURIComponent(`*${q}*`);
-    filter += `&or=(reference.ilike.${like},nom.ilike.${like},email.ilike.${like},telephone.ilike.${like})`;
-  }
 
   try {
-    const [rows, all, stats] = await Promise.all([
-      db.select(`reservations?select=*&${filter}${statut ? `&statut=eq.${statut}` : ""}&order=date.asc,heure.asc&limit=1000`),
-      db.select(`reservations?select=statut&${filter}&limit=5000`),
-      dashboard(tonight),
-    ]);
-    rows.forEach((r) => { r.heure = String(r.heure).slice(0, 5); delete r.token_hash; });
-    const counts = Object.fromEntries(STATUSES.map((s) => [s, all.filter((r) => r.statut === s).length]));
-    counts.all = all.length;
-    return send(res, 200, { from, to, tonight, capacity: capacity(), counts, stats, reservations: sortEvening(rows) });
+    if (req.method === "GET") {
+      const params = new URL(req.url, "http://x").searchParams;
+      const date = RULES.isYmd(params.get("date")) ? params.get("date") : tonight();
+      return send(res, 200, await dayView(date));
+    }
+
+    if (req.method === "POST") {
+      let body;
+      try { body = await readJson(req); } catch (e) { return send(res, 400, { error: "bad_request" }); }
+      const { errors, data } = validateBooking(body, { admin: true });
+      if (Object.keys(errors).length) return send(res, 422, { error: "validation", fields: errors });
+
+      const result = await insertReservation(data, { source: "telephone", force: body.force === true });
+      if (!result.ok) return send(res, 409, { error: result.reason });
+
+      const r = result.reservation;
+      let emailSent = null;
+      if (r.email && body.sendEmail === true) {
+        emailSent = await sendCustomerEmail(r, "confirmee", manageUrl(req, r.reference, result.token));
+      }
+      return send(res, 201, { reference: r.reference, emailSent });
+    }
+
+    res.setHeader("Allow", "GET, POST");
+    return send(res, 405, { error: "method_not_allowed" });
   } catch (err) {
     console.error("[admin/reservations]", err);
     return send(res, 500, { error: "server" });

@@ -8,6 +8,7 @@
 "use strict";
 
 const CONFIG = require("../../js/config.js");
+const { siteUrl } = require("./http");
 
 const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -158,6 +159,7 @@ function detailRows(r, lang) {
  * kind : "confirmee" (avec manageUrl), "annulee" (par le bar) ou "annulee_client".
  */
 function sendCustomerEmail(r, kind, manageUrl) {
+  if (!r.email) return Promise.resolve(null); // réservation par téléphone sans email
   const lang = r.langue === "de" ? "de" : "fr";
   const T = TEXT[lang];
   const t = T[kind];
@@ -184,14 +186,14 @@ function sendBarNotification(r, kind, adminUrl) {
   return sendEmail({
     to,
     subject: `${cancel ? "Annulation client" : "Nouvelle réservation"} ${r.reference} : ${r.nom} — ${formatDate(r.date, "fr")} ${hhmm(r.heure)} (${r.personnes} pers.)`,
-    replyTo: r.email,
+    replyTo: r.email || undefined,
     parts: {
       title: cancel ? "Un client a annulé sa réservation" : "Nouvelle réservation confirmée",
       intro: cancel
         ? "La place est de nouveau disponible pour ce créneau."
-        : "La réservation est confirmée automatiquement (place disponible). Vous pouvez la modifier ou l'annuler dans le panneau admin.",
+        : "Réservation confirmée automatiquement (place disponible). Vous pouvez l'annuler dans le panneau admin.",
       rows: [
-        ["Nom", r.nom], ["Téléphone", r.telephone], ["Email", r.email],
+        ["Nom", r.nom], ["Téléphone", r.telephone], ["Email", r.email || "—"],
         ...detailRows(r, "fr"),
         ["Message", r.message || "—"], ["Langue", String(r.langue).toUpperCase()],
       ],
@@ -202,4 +204,9 @@ function sendBarNotification(r, kind, adminUrl) {
   });
 }
 
-module.exports = { sendCustomerEmail, sendBarNotification, formatDate };
+/** Lien « Gérer ma réservation » (page de confirmation) envoyé par email. */
+function manageUrl(req, reference, token) {
+  return `${siteUrl(req)}/reservation/confirmation/?ref=${encodeURIComponent(reference)}&t=${encodeURIComponent(token)}`;
+}
+
+module.exports = { sendCustomerEmail, sendBarNotification, formatDate, manageUrl };

@@ -40,6 +40,8 @@ module.exports = {
   /** Appelle une fonction SQL (voir supabase/schema.sql). */
   rpc: (name, args) => request("POST", `rpc/${name}`, args),
   select: (query) => request("GET", query),
+  insert: (table, values) => request("POST", table, values, { Prefer: "return=representation" }),
+  upsert: (table, values) => request("POST", table, values, { Prefer: "resolution=merge-duplicates,return=representation" }),
   update: (query, values) => request("PATCH", query, values, { Prefer: "return=representation" }),
   remove: (query) => request("DELETE", query, undefined, { Prefer: "return=representation" }),
 };
