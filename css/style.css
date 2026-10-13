@@ -116,8 +116,6 @@ p { margin: 0; }
 .btn--gold:hover { box-shadow: 0 10px 34px -8px rgba(201, 164, 92, .75); transform: translateY(-1px); }
 .btn--ghost { border-color: rgba(238, 231, 218, .28); background: rgba(255, 255, 255, .02); color: var(--text); }
 .btn--ghost:hover { border-color: var(--gold); color: var(--gold-light); }
-.btn--whatsapp { background: #1f8f4e; color: #fff; }
-.btn--whatsapp:hover { background: #22a35a; }
 .btn--block { width: 100%; }
 .btn[disabled] { opacity: .6; cursor: progress; }
 
@@ -448,6 +446,15 @@ p { margin: 0; }
   background: rgba(232, 138, 122, .1); border: 1px solid rgba(232, 138, 122, .35); color: var(--error);
 }
 
+.slot-alternatives { display: flex; flex-wrap: wrap; gap: .5rem; margin: -.5rem 0 1.25rem; }
+.slot-chip {
+  min-height: 44px; min-width: 76px; padding: .5rem 1rem; border-radius: 999px;
+  border: 1px solid var(--gold); background: rgba(201, 164, 92, .1); color: var(--gold-light);
+  font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color .25s, color .25s;
+}
+.slot-chip:hover, .slot-chip:focus-visible { background: var(--gold); color: #1a140a; }
+.field select option:disabled { color: var(--muted); }
+
 .booking-success { text-align: center; animation: fadeUp .6s var(--ease); }
 .booking-success:focus { outline: none; }
 .booking-success__icon {
@@ -457,6 +464,8 @@ p { margin: 0; }
 }
 .booking-success h3 { font-size: 2.2rem; margin-bottom: .8rem; }
 .booking-success p { color: rgba(238, 231, 218, .85); max-width: 42ch; margin: 0 auto 1.6rem; }
+.booking-success p.booking-success__recap { color: var(--gold-light); font-size: .9rem; margin-top: -1rem; }
+.booking-success p.booking-success__recap:empty { display: none; }
 
 /* ---------- Infos pratiques ---------- */
 .info { display: grid; gap: 1.25rem; }

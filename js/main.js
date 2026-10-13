@@ -21,9 +21,10 @@
 
   const CONFIG = window.GOIA_CONFIG;
   const I18N = window.GOIA_I18N;
+  const RULES = window.GOIA_RULES; // règles horaires partagées avec le serveur (js/rules.js)
   const LANGS = ["fr", "de"];
-  const TZ = "Europe/Berlin";
-  const WEB3FORMS_URL = "https://api.web3forms.com/submit";
+  const API_RESERVATIONS = "/api/reservations";
+  const API_AVAILABILITY = "/api/availability";
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -50,42 +51,8 @@
   };
 
   const locale = () => (lang === "de" ? "de-DE" : "fr-FR");
-  const pad = (n) => String(n).padStart(2, "0");
-  const toMinutes = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
-  const fromMinutes = (min) => `${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`;
-
-  /** Plage d'ouverture d'un jour en minutes ; fermeture après minuit gérée. */
-  function dayRange(dayIndex) {
-    const h = CONFIG.hours[dayIndex];
-    if (!h) return null;
-    const open = toMinutes(h.open);
-    let close = toMinutes(h.close);
-    if (close <= open) close += 24 * 60;
-    return { open, close };
-  }
-
-  /** Date/heure actuelles à Kehl (fuseau Europe/Berlin), quel que soit l'appareil. */
-  function nowInKehl() {
-    const parts = {};
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).formatToParts(new Date()).forEach((p) => { parts[p.type] = p.value; });
-    const ymd = `${parts.year}-${parts.month}-${parts.day}`;
-    return { ymd, weekday: weekdayOf(ymd), minutes: Number(parts.hour) * 60 + Number(parts.minute) };
-  }
-
-  /** Jour de la semaine (0 = dimanche) d'une date "AAAA-MM-JJ". */
-  function weekdayOf(ymd) {
-    const [y, m, d] = ymd.split("-").map(Number);
-    return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  }
-
-  function addDays(ymd, days) {
-    const [y, m, d] = ymd.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, m - 1, d + days));
-    return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
-  }
+  const { nowInKehl, weekdayOf, addDays } = RULES;
+  const dayRange = (dayIndex) => RULES.dayRange(CONFIG, dayIndex);
 
   function formatDateLong(ymd) {
     const [y, m, d] = ymd.split("-").map(Number);
@@ -401,6 +368,10 @@
     privacy: $("#f-privacy"),
   };
   let lastBooking = null;
+  let slotAvailability = {};   // places restantes par créneau pour la date choisie, ex. { "21:00": 6 }
+  let availabilityRequest = 0;
+  let lastAlternatives = [];
+  const formOpenedAt = Date.now(); // anti-robot : un humain met plus de 3 s à remplir le formulaire
 
   /** Chaque règle renvoie la clé du message d'erreur, ou "" si c'est valide. */
   const validators = {
@@ -419,9 +390,10 @@
     privacy: (_, el) => (el.checked ? "" : "err.privacy"),
   };
 
-  function validateField(name) {
+  /** Affiche (ou efface si key = "") l'erreur d'un champ. */
+  function setFieldError(name, key) {
     const el = fields[name];
-    const key = validators[name](el.value, el);
+    if (!el) return;
     const wrap = el.closest(".field");
     const msg = $(`#${el.id}-err`);
     wrap.classList.toggle("has-error", !!key);
@@ -430,7 +402,18 @@
     else el.removeAttribute("aria-describedby");
     msg.dataset.key = key;
     msg.textContent = key ? t(key) : "";
+  }
+
+  function validateField(name) {
+    const el = fields[name];
+    const key = validators[name](el.value, el);
+    setFieldError(name, key);
     return !key;
+  }
+
+  function focusFirstInvalid() {
+    const first = Object.values(fields).find((el) => el.getAttribute("aria-invalid") === "true");
+    if (first) first.focus();
   }
 
   /** Après un changement de langue, retraduit les erreurs déjà affichées. */
@@ -445,6 +428,28 @@
     alert.dataset.key = key || "";
     alert.textContent = key ? t(key) : "";
     alert.hidden = !key;
+    if (!key) showAlternatives([]);
+  }
+
+  /** Créneau complet : propose des horaires proches encore disponibles (boutons). */
+  function showAlternatives(times) {
+    lastAlternatives = times;
+    const box = $("#slot-alternatives");
+    box.innerHTML = "";
+    box.hidden = !times.length;
+    times.forEach((time) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "slot-chip";
+      b.textContent = time;
+      b.addEventListener("click", () => {
+        fields.time.value = time;
+        validateField("time");
+        showAlert("");
+        $("#f-submit").focus();
+      });
+      box.appendChild(b);
+    });
   }
 
   /** Bornes du calendrier : aujourd'hui → aujourd'hui + N jours. */
@@ -454,45 +459,53 @@
     fields.date.max = addDays(today, CONFIG.reservation.maxDaysAhead);
   }
 
-  /** Créneaux horaires selon le jour choisi et les horaires d'ouverture. */
+  /** Créneaux selon le jour choisi ; les créneaux complets sont grisés. */
   function refreshTimeSlots() {
     const select = fields.time;
     const date = fields.date.value;
     const previous = select.value;
     select.innerHTML = "";
 
-    const addOption = (value, text) => {
+    const addOption = (value, text, disabled) => {
       const o = document.createElement("option");
       o.value = value;
       o.textContent = text;
+      o.disabled = !!disabled;
       select.appendChild(o);
     };
 
     const range = date ? dayRange(weekdayOf(date)) : null;
-    if (!date || !range || date < nowInKehl().ymd) {
-      addOption("", t(date && !range ? "booking.time.closed" : "booking.time.pickDate"));
-      select.disabled = true;
-      return;
-    }
-
-    const { slotMinutes, lastSlotBeforeClose } = CONFIG.reservation;
-    const now = nowInKehl();
-    const isToday = date === now.ymd;
-    const slots = [];
-    for (let m = range.open; m <= range.close - lastSlotBeforeClose; m += slotMinutes) {
-      if (isToday && m <= now.minutes) continue; // pas de créneau déjà passé
-      slots.push(fromMinutes(m));
-    }
-
+    const slots = range ? RULES.slotsFor(CONFIG, date) : [];
     if (!slots.length) {
-      addOption("", t("booking.time.closed"));
+      addOption("", t(date && !range ? "booking.time.closed" : date ? "booking.time.none" : "booking.time.pickDate"));
       select.disabled = true;
       return;
     }
+
+    const persons = Number(fields.persons.value) || 1;
+    const isFull = (s) => slotAvailability[s] !== undefined && slotAvailability[s] < persons;
     addOption("", t("booking.time.choose"));
-    slots.forEach((s) => addOption(s, s));
+    slots.forEach((s) => addOption(s, isFull(s) ? `${s} — ${t("booking.time.full")}` : s, isFull(s)));
     select.disabled = false;
-    if (slots.includes(previous)) select.value = previous;
+    if (slots.includes(previous) && !isFull(previous)) select.value = previous;
+  }
+
+  /** Demande au serveur les places restantes pour la date choisie. */
+  async function loadAvailability() {
+    const date = fields.date.value;
+    const requestId = ++availabilityRequest;
+    slotAvailability = {};
+    if (!date) return;
+    try {
+      const res = await fetch(`${API_AVAILABILITY}?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (requestId !== availabilityRequest) return; // une date plus récente a été choisie entre-temps
+      json.slots.forEach((s) => { slotAvailability[s.time] = s.remaining; });
+      refreshTimeSlots();
+    } catch (e) {
+      // Serveur injoignable : on garde tous les créneaux, le serveur revérifiera à l'envoi.
+    }
   }
 
   function renderPersons() {
@@ -510,15 +523,11 @@
     $("#persons-hint").textContent = t("booking.persons.more", { max });
   }
 
-  function isWeb3FormsConfigured() {
-    const key = (CONFIG.web3formsKey || "").trim();
-    return key && !/VOTRE_CLE/i.test(key);
-  }
-
   function showSuccess(data) {
     if (!data) return;
     $("#success-title").textContent = t("booking.success.title", { name: data.name.split(" ")[0] });
-    $("#success-text").textContent = t("booking.success.text", {
+    $("#success-text").textContent = t("booking.success.text");
+    $("#success-recap").textContent = t("booking.success.recap", {
       date: formatDateLong(data.date), time: data.time, persons: data.persons,
     });
   }
@@ -540,12 +549,13 @@
     });
 
     fields.date.addEventListener("change", () => {
+      showAlert("");
       refreshTimeSlots();
+      loadAvailability();
       validateField("date");
       if (fields.time.closest(".field").classList.contains("has-error")) validateField("time");
     });
-    form.addEventListener("input", updateWhatsAppLinks);
-    form.addEventListener("change", updateWhatsAppLinks);
+    fields.persons.addEventListener("change", refreshTimeSlots);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -556,8 +566,7 @@
       const results = Object.keys(fields).map(validateField);
       if (results.includes(false)) {
         showAlert("err.summary");
-        const firstInvalid = Object.values(fields).find((el) => el.getAttribute("aria-invalid") === "true");
-        if (firstInvalid) firstInvalid.focus();
+        focusFirstInvalid();
         return;
       }
 
@@ -571,45 +580,46 @@
         message: $("#f-message").value.trim(),
       };
 
-      // Robot détecté (champ invisible coché) : on simule un succès sans rien envoyer
-      if (form.botcheck.checked) { finish(data); return; }
-
-      if (!isWeb3FormsConfigured()) {
-        console.warn("[Le Goia] Clé Web3Forms manquante : renseignez web3formsKey dans js/config.js (voir README).");
-        showAlert("booking.error.config");
-        return;
-      }
-
       const btn = $("#f-submit");
       const label = $("span", btn);
       btn.disabled = true;
       label.textContent = t("booking.sending");
 
       try {
-        const res = await fetch(WEB3FORMS_URL, {
+        const res = await fetch(API_RESERVATIONS, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({
-            access_key: CONFIG.web3formsKey.trim(),
-            subject: `Réservation Le Goia – ${data.name} – ${data.date} ${data.time} (${data.persons} pers.)`,
-            from_name: "Site web Le Goia",
-            replyto: data.email,
-            // Libellés lisibles dans l'email reçu par le bar
-            "Nom": data.name,
-            "Téléphone": data.phone,
-            "Email": data.email,
-            "Date": formatDateLong(data.date) + ` (${data.date})`,
-            "Heure": data.time,
-            "Personnes": data.persons,
-            "Message": data.message || "—",
-            "18 ans ou plus": "Oui (confirmé)",
-            "Confidentialité": "Acceptée",
-            "Langue": lang.toUpperCase(),
+            ...data,
+            age: fields.age.checked,
+            privacy: fields.privacy.checked,
+            lang,
+            botcheck: form.botcheck.checked,
+            elapsed: Date.now() - formOpenedAt,
           }),
         });
         const json = await res.json().catch(() => ({}));
-        if (!res.ok || json.success === false) throw new Error(json.message || res.status);
-        finish(data);
+
+        if (res.status === 201 && json.ok) {
+          finish(data);
+        } else if (res.status === 422 && json.fields) {
+          // Le serveur a refusé certains champs : on les signale comme le ferait le navigateur
+          Object.entries(json.fields).forEach(([name, key]) => setFieldError(name, key));
+          showAlert("err.summary");
+          focusFirstInvalid();
+        } else if (res.status === 409) {
+          // Créneau complet (quelqu'un a réservé entre-temps) : on propose d'autres horaires
+          slotAvailability[data.time] = json.remaining || 0;
+          refreshTimeSlots();
+          const alts = json.alternatives || [];
+          showAlert(alts.length ? "booking.full" : "booking.fullNoAlt");
+          showAlternatives(alts);
+          loadAvailability();
+        } else if (res.status === 429) {
+          showAlert("booking.error.rateLimited");
+        } else {
+          throw new Error(json.error || res.status);
+        }
       } catch (err) {
         console.error("[Le Goia] Échec de l'envoi :", err);
         showAlert("booking.error.generic");
@@ -631,13 +641,13 @@
 
     $("#success-again").addEventListener("click", () => {
       form.reset();
+      slotAvailability = {};
       renderPersons();
       refreshTimeSlots();
-      $$(".field.has-error").forEach((f) => f.classList.remove("has-error"));
-      $$(".field__error").forEach((p) => { p.textContent = ""; p.dataset.key = ""; });
+      showAlert("");
+      Object.keys(fields).forEach((name) => setFieldError(name, ""));
       $("#booking-success").hidden = true;
       form.hidden = false;
-      updateWhatsAppLinks();
       fields.name.focus();
     });
   }
@@ -646,17 +656,10 @@
      8. Coordonnées, WhatsApp et réseaux (depuis config.js)
      ====================================================================== */
 
-  /** Lien WhatsApp avec un message pré-rempli à partir du formulaire. */
+  /** Lien WhatsApp (section Infos) avec un message d'accueil pré-rempli. */
   function updateWhatsAppLinks() {
-    const date = fields.date.value;
-    const time = fields.time.value;
-    const persons = fields.persons.value;
-    const details = date && time && persons
-      ? t("wa.details", { persons, date: formatDateLong(date), time })
-      : "";
-    const text = t("wa.message", { details });
-    const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
-    $$("#wa-link, [data-config-wa]").forEach((a) => { a.href = url; });
+    const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(t("wa.message"))}`;
+    $$("[data-config-wa]").forEach((a) => { a.href = url; });
   }
 
   function applyConfig() {

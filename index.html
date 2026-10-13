@@ -185,16 +185,12 @@
         <header class="section__head reveal">
           <p class="eyebrow" data-i18n="booking.eyebrow">Votre table</p>
           <h2 id="booking-title" class="section__title" data-i18n="booking.title">Réserver</h2>
-          <p class="section__intro" data-i18n="booking.intro">Envoyez votre demande, nous vous confirmons rapidement par téléphone ou par email.</p>
+          <p class="section__intro" data-i18n="booking.intro">Envoyez votre demande, nous vous confirmons rapidement par email.</p>
         </header>
 
-        <!-- Alternatives rapides -->
+        <!-- Alternative : réservation par téléphone -->
         <div class="quick-book reveal">
-          <span class="quick-book__label" data-i18n="booking.alt">Plus rapide :</span>
-          <a class="btn btn--whatsapp" id="wa-link" href="#" target="_blank" rel="noopener">
-            <svg class="icon" aria-hidden="true"><use href="#i-whatsapp"/></svg>
-            <span data-i18n="booking.whatsapp">Réserver par WhatsApp</span>
-          </a>
+          <span class="quick-book__label" data-i18n="booking.alt">Vous préférez appeler ?</span>
           <a class="btn btn--ghost" data-config-tel href="tel:+4978510000000">
             <svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>
             <span data-i18n="booking.call">Appeler</span>
@@ -206,6 +202,8 @@
           <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
 
           <div class="form-alert" id="form-alert" role="alert" hidden></div>
+          <!-- Créneau complet : horaires de remplacement proposés ici -->
+          <div class="slot-alternatives" id="slot-alternatives" hidden></div>
 
           <div class="field">
             <label for="f-name" data-i18n="booking.name">Nom</label>
@@ -274,6 +272,7 @@
           <div class="booking-success__icon" aria-hidden="true">✓</div>
           <h3 id="success-title"></h3>
           <p id="success-text"></p>
+          <p class="booking-success__recap" id="success-recap"></p>
           <button type="button" class="btn btn--ghost" id="success-again" data-i18n="booking.success.again">Nouvelle demande</button>
         </div>
       </div>
@@ -352,6 +351,7 @@
 
   <!-- Scripts : configuration → traductions → logique du site -->
   <script src="js/config.js"></script>
+  <script src="js/rules.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/main.js"></script>
 </body>

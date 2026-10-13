@@ -42,7 +42,7 @@ window.GOIA_I18N = {
 
     "booking.eyebrow": "Votre table",
     "booking.title": "Réserver",
-    "booking.intro": "Envoyez votre demande, nous vous confirmons rapidement par téléphone ou par email.",
+    "booking.intro": "Envoyez votre demande, nous vous confirmons rapidement par email.",
     "booking.name": "Nom",
     "booking.phone": "Téléphone",
     "booking.email": "Email",
@@ -60,17 +60,18 @@ window.GOIA_I18N = {
     "booking.time.pickDate": "Date d'abord",
     "booking.time.choose": "Choisir une heure",
     "booking.time.closed": "Fermé ce jour-là",
+    "booking.time.none": "Plus de créneau ce jour-là",
+    "booking.time.full": "complet",
     "booking.persons.more": "Plus de {max} personnes ? Appelez-nous.",
     "booking.success.title": "Merci, {name} !",
-    "booking.success.text":
-      "Votre demande pour le {date} à {time} ({persons} pers.) a bien été envoyée. Elle sera définitive après notre confirmation.",
+    "booking.success.text": "Votre demande est enregistrée, vous recevrez un email de confirmation.",
+    "booking.success.recap": "{date} à {time} · {persons} pers.",
     "booking.success.again": "Nouvelle demande",
-    "booking.error.generic":
-      "L'envoi a échoué. Réessayez ou réservez directement par WhatsApp ou téléphone.",
-    "booking.error.config":
-      "La réservation en ligne est momentanément indisponible. Réservez par WhatsApp ou téléphone.",
-    "booking.alt": "Plus rapide :",
-    "booking.whatsapp": "Réserver par WhatsApp",
+    "booking.error.generic": "L'envoi a échoué. Réessayez dans un instant ou appelez-nous.",
+    "booking.error.rateLimited": "Trop de demandes envoyées. Réessayez plus tard ou appelez-nous.",
+    "booking.full": "Ce créneau vient d'être complet. Horaires encore disponibles ce jour-là :",
+    "booking.fullNoAlt": "Ce créneau est complet et il n'y a plus de place ce jour-là. Choisissez une autre date ou appelez-nous.",
+    "booking.alt": "Vous préférez appeler ?",
     "booking.call": "Appeler",
 
     "err.name": "Indiquez votre nom.",
@@ -85,8 +86,7 @@ window.GOIA_I18N = {
     "err.privacy": "Merci d'accepter la politique de confidentialité.",
     "err.summary": "Merci de corriger les champs indiqués.",
 
-    "wa.message": "Bonjour Le Goia, je souhaite réserver une table{details}. Merci !",
-    "wa.details": " pour {persons} personne(s) le {date} à {time}",
+    "wa.message": "Bonjour Le Goia !",
 
     "info.eyebrow": "Nous trouver",
     "info.title": "Infos pratiques",
@@ -153,7 +153,7 @@ window.GOIA_I18N = {
 
     "booking.eyebrow": "Dein Tisch",
     "booking.title": "Reservieren",
-    "booking.intro": "Sende uns deine Anfrage – wir bestätigen schnell per Telefon oder E-Mail.",
+    "booking.intro": "Sende uns deine Anfrage – wir bestätigen schnell per E-Mail.",
     "booking.name": "Name",
     "booking.phone": "Telefon",
     "booking.email": "E-Mail",
@@ -171,17 +171,18 @@ window.GOIA_I18N = {
     "booking.time.pickDate": "Erst Datum wählen",
     "booking.time.choose": "Uhrzeit wählen",
     "booking.time.closed": "An diesem Tag geschlossen",
+    "booking.time.none": "Heute keine Uhrzeit mehr frei",
+    "booking.time.full": "ausgebucht",
     "booking.persons.more": "Mehr als {max} Personen? Ruf uns an.",
     "booking.success.title": "Danke, {name}!",
-    "booking.success.text":
-      "Deine Anfrage für den {date} um {time} Uhr ({persons} Pers.) wurde gesendet. Sie ist erst nach unserer Bestätigung verbindlich.",
+    "booking.success.text": "Deine Anfrage ist eingegangen, du erhältst eine Bestätigungs-E-Mail.",
+    "booking.success.recap": "{date} um {time} Uhr · {persons} Pers.",
     "booking.success.again": "Neue Anfrage",
-    "booking.error.generic":
-      "Senden fehlgeschlagen. Bitte versuche es erneut oder reserviere per WhatsApp oder Telefon.",
-    "booking.error.config":
-      "Die Online-Reservierung ist gerade nicht verfügbar. Bitte reserviere per WhatsApp oder Telefon.",
-    "booking.alt": "Schneller:",
-    "booking.whatsapp": "Per WhatsApp reservieren",
+    "booking.error.generic": "Senden fehlgeschlagen. Bitte versuche es gleich noch einmal oder ruf uns an.",
+    "booking.error.rateLimited": "Zu viele Anfragen gesendet. Bitte versuche es später oder ruf uns an.",
+    "booking.full": "Diese Uhrzeit ist gerade ausgebucht. Noch frei an diesem Tag:",
+    "booking.fullNoAlt": "Diese Uhrzeit ist ausgebucht und an diesem Tag ist nichts mehr frei. Bitte wähle ein anderes Datum oder ruf uns an.",
+    "booking.alt": "Lieber anrufen?",
     "booking.call": "Anrufen",
 
     "err.name": "Bitte gib deinen Namen ein.",
@@ -196,8 +197,7 @@ window.GOIA_I18N = {
     "err.privacy": "Bitte akzeptiere die Datenschutzerklärung.",
     "err.summary": "Bitte korrigiere die markierten Felder.",
 
-    "wa.message": "Hallo Le Goia, ich möchte gerne einen Tisch reservieren{details}. Danke!",
-    "wa.details": " für {persons} Person(en) am {date} um {time} Uhr",
+    "wa.message": "Hallo Le Goia!",
 
     "info.eyebrow": "So findest du uns",
     "info.title": "Infos",

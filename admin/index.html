@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Réservations — Le Goia (admin)</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0B0A0C">
+  <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="admin">
+  <header class="admin-bar">
+    <div class="admin-bar__inner">
+      <span class="nav__logo">Le <span>Goia</span></span>
+      <div class="admin-bar__actions" id="bar-actions" hidden>
+        <button type="button" class="icon-btn" id="refresh" aria-label="Actualiser" title="Actualiser">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="btn btn--ghost btn--small" id="logout">Déconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <!-- ============ Connexion ============ -->
+    <section class="login" id="login-view" hidden>
+      <form class="login__card" id="login-form">
+        <h1>Réservations</h1>
+        <p class="muted">Espace réservé à l'équipe du Goia.</p>
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </div>
+        <p class="form-alert" id="login-error" role="alert" hidden></p>
+        <button type="submit" class="btn btn--gold btn--block" id="login-submit">Se connecter</button>
+      </form>
+    </section>
+
+    <!-- ============ Liste des réservations ============ -->
+    <section id="list-view" hidden>
+      <div class="filters">
+        <div class="filters__chips" role="group" aria-label="Période">
+          <button type="button" class="chip" data-range="today" aria-pressed="false">Ce soir</button>
+          <button type="button" class="chip" data-range="tomorrow" aria-pressed="false">Demain</button>
+          <button type="button" class="chip" data-range="upcoming" aria-pressed="true">À venir</button>
+        </div>
+        <div class="filters__row">
+          <label class="filters__date">
+            <span>Date</span>
+            <input type="date" id="filter-date">
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="show-refused">
+            <span>Afficher les refusées</span>
+          </label>
+        </div>
+      </div>
+
+      <p class="pending-banner" id="pending-banner" hidden></p>
+      <p class="admin-status" id="list-status" role="status"></p>
+      <div id="days"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/rules.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

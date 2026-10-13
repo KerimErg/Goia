@@ -1,0 +1,7 @@
+{
+  "name": "le-goia",
+  "private": true,
+  "description": "Site du bar à chicha Le Goia (Kehl) — site statique + fonctions Vercel pour les réservations",
+  "engines": { "node": "22.x" },
+  "scripts": {}
+}

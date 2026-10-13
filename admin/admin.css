@@ -1,0 +1,98 @@
+/* Panneau admin Le Goia — complète css/style.css (mêmes couleurs et polices). */
+
+.admin { min-height: 100vh; background: var(--bg); }
+.admin-bar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(11, 10, 12, .9); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.admin-bar__inner { max-width: 760px; margin: 0 auto; padding: .7rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.admin-bar__actions { display: flex; align-items: center; gap: .5rem; }
+.admin-main { max-width: 760px; margin: 0 auto; padding: 1rem 1rem 5rem; }
+.btn--small { min-height: 40px; padding: .45rem 1rem; font-size: .82rem; }
+.icon-btn {
+  width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--line); background: none; color: var(--text); cursor: pointer;
+}
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.is-spinning svg { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Connexion */
+.login { min-height: 70vh; display: grid; place-items: center; }
+.login__card {
+  width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 18px; padding: 2rem 1.5rem;
+}
+.login__card h1 { font-size: 2.2rem; margin-bottom: .3rem; }
+.login__card .muted { margin-bottom: 1.5rem; font-size: .9rem; }
+
+/* Filtres */
+.filters { display: grid; gap: .8rem; margin: .5rem 0 1rem; }
+.filters__chips { display: flex; gap: .5rem; }
+.chip {
+  flex: 1; min-height: 42px; border-radius: 999px; border: 1px solid var(--line);
+  background: none; color: var(--muted); font-size: .88rem; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #1a140a; font-weight: 600; }
+.filters__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; }
+.filters__date { display: flex; align-items: center; gap: .6rem; font-size: .85rem; color: var(--muted); }
+.filters__date input {
+  min-height: 42px; padding: .4rem .7rem; border-radius: 10px; border: 1px solid rgba(238, 231, 218, .14);
+  background: rgba(11, 10, 12, .6); color: var(--text); color-scheme: dark; font-size: 1rem;
+}
+.filters__date input.is-active { border-color: var(--gold); }
+.toggle { display: inline-flex; align-items: center; gap: .5rem; font-size: .85rem; color: var(--muted); cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--gold); }
+
+.pending-banner {
+  background: rgba(201, 164, 92, .12); border: 1px solid rgba(201, 164, 92, .4); color: var(--gold-light);
+  border-radius: 12px; padding: .7rem 1rem; font-size: .9rem; margin-bottom: 1rem;
+}
+.admin-status { color: var(--muted); text-align: center; padding: 1.5rem 0; }
+.admin-status:empty { display: none; }
+
+/* Soirées */
+.day { margin-bottom: 2rem; }
+.day__head {
+  position: sticky; top: 63px; z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem 1rem;
+  padding: .7rem 0 .6rem; border-bottom: 1px solid var(--line); margin-bottom: .8rem;
+}
+.day__title { font-size: 1.6rem; }
+.day__title::first-letter { text-transform: uppercase; }
+.day__count { font-size: .85rem; color: var(--muted); }
+.day__count strong { color: var(--gold-light); font-size: 1.05rem; }
+
+/* Carte réservation */
+.resa {
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--gold);
+  border-radius: 12px; padding: 1rem; margin-bottom: .7rem;
+}
+.resa--confirmee { border-left-color: var(--success); }
+.resa--refusee { border-left-color: var(--error); opacity: .6; }
+.resa__top { display: flex; align-items: center; gap: .8rem; }
+.resa__time { font-family: var(--font-display); font-size: 1.9rem; line-height: 1; color: var(--gold-light); font-variant-numeric: tabular-nums; }
+.resa__who { flex: 1; min-width: 0; }
+.resa__name { font-weight: 600; overflow-wrap: anywhere; }
+.resa__persons { font-size: .85rem; color: var(--muted); }
+.pill { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: .25rem .6rem; border-radius: 999px; white-space: nowrap; }
+.pill--en_attente { background: rgba(201, 164, 92, .15); color: var(--gold-light); }
+.pill--confirmee { background: rgba(143, 199, 154, .15); color: var(--success); }
+.pill--refusee { background: rgba(232, 138, 122, .15); color: var(--error); }
+.resa__contact { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin-top: .7rem; font-size: .9rem; }
+.resa__contact a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--muted); overflow-wrap: anywhere; }
+.resa__msg { margin-top: .6rem; padding: .6rem .8rem; background: rgba(11, 10, 12, .5); border-radius: 8px; font-size: .9rem; color: rgba(238, 231, 218, .85); white-space: pre-wrap; overflow-wrap: anywhere; }
+.resa__meta { margin-top: .5rem; font-size: .75rem; color: var(--muted); }
+.resa__actions { display: flex; gap: .6rem; margin-top: .9rem; }
+.resa__actions .btn { flex: 1; min-height: 46px; }
+.btn--danger { border: 1px solid rgba(232, 138, 122, .5); background: transparent; color: var(--error); }
+.btn--danger:hover { background: rgba(232, 138, 122, .1); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(1.2rem + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 50; max-width: calc(100% - 2rem); padding: .8rem 1.2rem; border-radius: 12px;
+  background: #2a2730; border: 1px solid var(--line); color: var(--text); font-size: .9rem;
+  box-shadow: 0 12px 40px -10px rgba(0, 0, 0, .8); animation: fadeUp .3s var(--ease);
+}
+.toast--warn { border-color: rgba(232, 138, 122, .6); }
