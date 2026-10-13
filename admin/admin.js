@@ -1,27 +1,35 @@
 /* ==========================================================================
    LE GOIA — Panneau admin des réservations
    --------------------------------------------------------------------------
-   Connexion par mot de passe (vérifié par le serveur, jamais stocké ici),
-   liste des réservations par soirée, boutons Confirmer / Refuser.
+   Même organisation que l'admin du site de location : indicateurs, filtres
+   par statut avec compteurs, recherche, menu de statut sur chaque réservation.
+   Adapté au bar : regroupement par soirée avec compteur de personnes.
+   Connexion par mot de passe (vérifié par le serveur, jamais stocké ici).
    ========================================================================== */
 
 (function () {
   "use strict";
 
   const RULES = window.GOIA_RULES;
+  const CONFIG = window.GOIA_CONFIG;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const STATUS_LABEL = { en_attente: "En attente", confirmee: "Confirmée", refusee: "Refusée" };
+  const STATUS_LABEL = {
+    en_attente: "En attente", confirmee: "Confirmée", en_cours: "En cours", terminee: "Terminée", annulee: "Annulée",
+  };
+  const ACTIVE = ["en_attente", "confirmee", "en_cours"];
   const AUTO_REFRESH_MS = 2 * 60 * 1000;
 
   let range = "upcoming";      // "today" | "tomorrow" | "upcoming" | "date"
-  let reservations = [];
+  let statusFilter = "";       // "" = toutes
+  let search = "";
+  let data = null;
   let loading = false;
 
   /* ---------- Utilitaires ---------- */
 
-  /** "Ce soir" : avant 6 h du matin, c'est encore la soirée de la veille. */
+  /** « Ce soir » : avant 6 h du matin, c'est encore la soirée de la veille. */
   function tonight() {
     const now = RULES.nowInKehl();
     return now.minutes < 6 * 60 ? RULES.addDays(now.ymd, -1) : now.ymd;
@@ -39,6 +47,8 @@
   const formatCreated = (iso) => new Intl.DateTimeFormat("fr-FR", {
     day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: RULES.TZ,
   }).format(new Date(iso));
+  const eur = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
+  const zoneName = (id) => { const z = (CONFIG.zones || []).find((x) => x.id === id); return z ? z.name.fr : ""; };
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -88,24 +98,26 @@
 
   /* ---------- Chargement ---------- */
 
-  function queryForRange() {
-    if (range === "today") return `?from=${tonight()}&to=${tonight()}`;
-    if (range === "tomorrow") { const d = RULES.addDays(tonight(), 1); return `?from=${d}&to=${d}`; }
-    if (range === "date" && $("#filter-date").value) {
-      const d = $("#filter-date").value;
-      return `?from=${d}&to=${d}`;
-    }
-    return "";
+  function query() {
+    const p = new URLSearchParams();
+    if (range === "today") { p.set("from", tonight()); p.set("to", tonight()); }
+    if (range === "tomorrow") { const d = RULES.addDays(tonight(), 1); p.set("from", d); p.set("to", d); }
+    if (range === "date" && $("#filter-date").value) { p.set("from", $("#filter-date").value); p.set("to", $("#filter-date").value); }
+    if (statusFilter) p.set("statut", statusFilter);
+    if (search) p.set("q", search);
+    const s = p.toString();
+    return s ? `?${s}` : "";
   }
 
+  let reloadQueued = false;
   async function load() {
-    if (loading) return;
+    // Un filtre changé pendant un chargement relance un chargement juste après
+    if (loading) { reloadQueued = true; return; }
     loading = true;
     $("#refresh").classList.add("is-spinning");
-    if (!reservations.length) $("#list-status").textContent = "Chargement…";
+    if (!data) $("#list-status").textContent = "Chargement…";
     try {
-      const json = await api(`/api/admin/reservations${queryForRange()}`);
-      reservations = json.reservations;
+      data = await api(`/api/admin/reservations${query()}`);
       showList();
       render();
     } catch (err) {
@@ -116,42 +128,66 @@
     } finally {
       loading = false;
       $("#refresh").classList.remove("is-spinning");
+      if (reloadQueued) { reloadQueued = false; load(); }
     }
   }
 
   /* ---------- Affichage ---------- */
 
+  function renderKpis() {
+    const s = data.stats;
+    const kpis = [
+      ["Ce soir", String(s.tonight.reservations), `${s.tonight.persons} personne${s.tonight.persons > 1 ? "s" : ""} attendue${s.tonight.persons > 1 ? "s" : ""}`],
+      ["Remplissage ce soir", `${s.peakOccupancy} %`, `créneau le plus chargé · capacité ${data.capacity}`],
+      ["7 prochains jours", String(s.week.reservations), `${s.week.persons} personnes`],
+      ["Annulations (30 j)", String(s.cancelled30.total), `dont ${s.cancelled30.byClient} par les clients`],
+    ];
+    const box = $("#kpis");
+    box.innerHTML = "";
+    kpis.forEach(([label, value, sub]) => {
+      const k = el("div", "kpi");
+      k.append(el("p", "kpi__label", label), el("p", "kpi__value", value), el("p", "kpi__sub", sub));
+      box.appendChild(k);
+    });
+    $("#updated-at").textContent = `Mis à jour à ${new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: RULES.TZ }).format(new Date())}`;
+  }
+
+  function renderStatusTabs() {
+    const box = $("#status-tabs");
+    box.innerHTML = "";
+    [["", "Toutes", data.counts.all], ...Object.keys(STATUS_LABEL).map((s) => [s, STATUS_LABEL[s], data.counts[s]])]
+      .forEach(([value, label, count]) => {
+        const b = el("button", "status-tab", `${label} (${count})`);
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(statusFilter === value));
+        b.addEventListener("click", () => { statusFilter = value; load(); });
+        box.appendChild(b);
+      });
+  }
+
   function render() {
-    const showRefused = $("#show-refused").checked;
-    const visible = reservations.filter((r) => showRefused || r.statut !== "refusee");
+    renderKpis();
+    renderStatusTabs();
     const days = $("#days");
     days.innerHTML = "";
-
-    const pending = reservations.filter((r) => r.statut === "en_attente").length;
-    const banner = $("#pending-banner");
-    banner.hidden = !pending;
-    banner.textContent = pending === 1 ? "1 demande en attente de réponse" : `${pending} demandes en attente de réponse`;
-
-    $("#list-status").textContent = visible.length ? "" : "Aucune réservation pour cette période.";
+    const rows = data.reservations;
+    $("#list-status").textContent = rows.length ? "" : "Aucune réservation pour ces critères.";
 
     // Regroupement par soirée (date de réservation)
     const byDay = new Map();
-    visible.forEach((r) => {
+    rows.forEach((r) => {
       if (!byDay.has(r.date)) byDay.set(r.date, []);
       byDay.get(r.date).push(r);
     });
 
     byDay.forEach((list, date) => {
-      const all = reservations.filter((r) => r.date === date);
-      const sum = (statut) => all.filter((r) => r.statut === statut).reduce((n, r) => n + r.personnes, 0);
-      const confirmed = sum("confirmee");
-      const waiting = sum("en_attente");
-
+      const persons = (statuses) => list.filter((r) => statuses.includes(r.statut)).reduce((n, r) => n + r.personnes, 0);
+      const expected = persons(ACTIVE);
       const section = el("section", "day");
       const head = el("div", "day__head");
       head.appendChild(el("h2", "day__title", formatDay(date)));
       const count = el("p", "day__count");
-      count.append(el("strong", null, `${confirmed + waiting} pers.`), ` · ${confirmed} confirmées · ${waiting} en attente`);
+      count.append(el("strong", null, `${expected} pers.`), ` attendues · ${list.filter((r) => ACTIVE.includes(r.statut)).length} réservation(s)`);
       head.appendChild(count);
       section.appendChild(head);
       list.forEach((r) => section.appendChild(card(r)));
@@ -161,11 +197,11 @@
 
   function card(r) {
     const c = el("article", `resa resa--${r.statut}`);
-    c.dataset.id = r.id;
 
     const top = el("div", "resa__top");
     top.appendChild(el("span", "resa__time", r.heure));
     const who = el("div", "resa__who");
+    who.appendChild(el("div", "resa__ref", r.reference));
     who.appendChild(el("div", "resa__name", r.nom));
     who.appendChild(el("div", "resa__persons", `${r.personnes} personne${r.personnes > 1 ? "s" : ""} · ${String(r.langue).toUpperCase()}`));
     top.appendChild(who);
@@ -180,32 +216,47 @@
     contact.append(tel, mail);
     c.appendChild(contact);
 
-    if (r.message) c.appendChild(el("p", "resa__msg", r.message));
-    c.appendChild(el("p", "resa__meta", `Demande reçue le ${formatCreated(r.cree_le)}`));
+    const extras = el("div", "resa__extras");
+    if (r.espace && zoneName(r.espace)) extras.append(lineOf("Espace", zoneName(r.espace)));
+    if ((r.precommande || []).length) {
+      extras.append(lineOf("Pré-commande", r.precommande.map((l) => `${l.quantite} × ${l.nom}`).join(", ") + ` · ${eur(Number(r.total_estime))}`));
+    }
+    if (extras.childElementCount) c.appendChild(extras);
 
+    if (r.message) c.appendChild(el("p", "resa__msg", r.message));
+    const meta = `Réservée le ${formatCreated(r.cree_le)}` +
+      (r.statut === "annulee" && r.annule_par ? ` · annulée par ${r.annule_par === "client" ? "le client" : "le bar"}` : "");
+    c.appendChild(el("p", "resa__meta", meta));
+
+    // Menu de statut (comme sur le site de location)
     const actions = el("div", "resa__actions");
-    if (r.statut !== "confirmee") {
-      const ok = el("button", "btn btn--gold", "Confirmer");
-      ok.type = "button";
-      ok.addEventListener("click", () => setStatus(r, "confirmee", ok));
-      actions.appendChild(ok);
-    }
-    if (r.statut !== "refusee") {
-      const no = el("button", "btn btn--danger", r.statut === "confirmee" ? "Annuler / refuser" : "Refuser");
-      no.type = "button";
-      no.addEventListener("click", () => {
-        if (window.confirm(`Refuser la réservation de ${r.nom} (${r.heure}, ${r.personnes} pers.) ?\nLe client sera prévenu par email.`)) {
-          setStatus(r, "refusee", no);
-        }
-      });
-      actions.appendChild(no);
-    }
+    const select = el("select", "status-select");
+    select.setAttribute("aria-label", `Statut de ${r.reference}`);
+    Object.entries(STATUS_LABEL).forEach(([value, label]) => {
+      const o = el("option", null, label);
+      o.value = value;
+      select.appendChild(o);
+    });
+    select.value = r.statut;
+    select.addEventListener("change", () => setStatus(r, select.value, select));
+    actions.appendChild(select);
     c.appendChild(actions);
     return c;
   }
 
-  async function setStatus(r, statut, button) {
-    $$("button", button.parentElement).forEach((b) => { b.disabled = true; });
+  function lineOf(label, value) {
+    const p = el("p");
+    p.append(el("span", null, `${label} : `), value);
+    return p;
+  }
+
+  async function setStatus(r, statut, select) {
+    if (statut === "annulee" &&
+        !window.confirm(`Annuler la réservation ${r.reference} de ${r.nom} (${r.heure}, ${r.personnes} pers.) ?\nLe client sera prévenu par email.`)) {
+      select.value = r.statut;
+      return;
+    }
+    select.disabled = true;
     try {
       const json = await api("/api/admin/status", {
         method: "POST",
@@ -213,14 +264,15 @@
         body: JSON.stringify({ id: r.id, statut }),
       });
       Object.assign(r, json.reservation);
-      render();
-      const verb = statut === "confirmee" ? "Confirmée" : "Refusée";
-      if (json.unchanged) toast(`${verb} (déjà fait)`);
-      else if (json.emailSent) toast(`${verb} — email envoyé à ${r.nom}`);
-      else toast(`${verb}, mais l'email n'a pas pu partir. Prévenez le client par téléphone.`, true);
+      const label = STATUS_LABEL[statut];
+      if (json.emailSent === true) toast(`Statut : ${label} — email envoyé à ${r.nom}`);
+      else if (json.emailSent === false && !json.unchanged) toast(`Statut : ${label}, mais l'email n'a pas pu partir. Prévenez le client par téléphone.`, true);
+      else toast(`Statut : ${label}`);
+      load(); // met à jour les compteurs et indicateurs
     } catch (err) {
       if (!err.silent) toast("Erreur, la modification n'a pas été enregistrée. Réessayez.", true);
-      $$("button", button.parentElement).forEach((b) => { b.disabled = false; });
+      select.value = r.statut;
+      select.disabled = false;
     }
   }
 
@@ -252,24 +304,28 @@
 
   $("#logout").addEventListener("click", async () => {
     await fetch("/api/admin/login", { method: "DELETE", credentials: "same-origin" }).catch(() => {});
-    reservations = [];
+    data = null;
     $("#days").innerHTML = "";
     showLogin();
   });
 
   $("#refresh").addEventListener("click", load);
-  $("#show-refused").addEventListener("change", render);
 
   function setRange(value) {
     range = value;
     $$(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.range === value)));
     $("#filter-date").classList.toggle("is-active", value === "date");
     if (value !== "date") $("#filter-date").value = "";
-    reservations = [];
     load();
   }
   $$(".chip").forEach((c) => c.addEventListener("click", () => setRange(c.dataset.range)));
   $("#filter-date").addEventListener("change", () => setRange($("#filter-date").value ? "date" : "upcoming"));
+
+  let searchTimer;
+  $("#search").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { search = e.target.value.trim(); load(); }, 300);
+  });
 
   // Actualisation automatique quand la page est visible
   setInterval(() => { if (!document.hidden && !$("#list-view").hidden) load(); }, AUTO_REFRESH_MS);

@@ -38,6 +38,7 @@
   <link rel="preload" href="fonts/cormorant-garamond.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/booking.css">
   <!-- Active les animations d'apparition uniquement si JavaScript fonctionne -->
   <script>document.documentElement.classList.add("js");</script>
 
@@ -181,12 +182,55 @@
 
     <!-- ================= 3. Réservation ================= -->
     <section class="section section--alt" id="reservation" aria-labelledby="booking-title">
-      <div class="container container--narrow">
+      <div class="container">
         <header class="section__head reveal">
           <p class="eyebrow" data-i18n="booking.eyebrow">Votre table</p>
           <h2 id="booking-title" class="section__title" data-i18n="booking.title">Réserver</h2>
-          <p class="section__intro" data-i18n="booking.intro">Envoyez votre demande, nous vous confirmons rapidement par email.</p>
+          <p class="section__intro" data-i18n="booking.intro">Choisissez votre soirée : la confirmation est immédiate.</p>
         </header>
+
+        <!-- Panneau de réservation : date (calendrier), horaire, personnes → étapes sur /reservation/ -->
+        <form class="bpanel reveal" id="booking-panel" action="reservation/" novalidate>
+          <p class="bpanel__title" data-i18n="panel.title">Réservez votre table</p>
+          <div class="bpanel__grid">
+            <div class="bfield-wrap">
+              <button type="button" class="bfield" id="bp-date">
+                <svg class="bfield__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <span class="bfield__text">
+                  <span class="bfield__label" data-i18n="panel.date">Date</span>
+                  <span class="bfield__value" id="bp-date-value" data-i18n="panel.datePh">Choisir une date</span>
+                </span>
+              </button>
+            </div>
+            <label class="bfield">
+              <svg class="bfield__icon" aria-hidden="true"><use href="#i-clock"/></svg>
+              <span class="bfield__text">
+                <span class="bfield__label" data-i18n="panel.time">Heure</span>
+                <select id="bp-time" class="bfield__select" disabled>
+                  <option value="">—</option>
+                </select>
+              </span>
+            </label>
+            <div class="bfield bfield--persons">
+              <svg class="bfield__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M16 5.2a3 3 0 0 1 0 5.6M17.5 14.3c1.7.6 2.7 2.2 3 4.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <span class="bfield__text">
+                <span class="bfield__label" data-i18n="panel.persons">Personnes</span>
+                <span class="bfield__value" id="bp-persons-value" aria-live="polite">2</span>
+              </span>
+              <span class="stepper">
+                <button type="button" class="stepper__btn" id="bp-less" data-i18n-aria-label="panel.less" aria-label="Une personne de moins">−</button>
+                <button type="button" class="stepper__btn" id="bp-more" data-i18n-aria-label="panel.more" aria-label="Une personne de plus">+</button>
+              </span>
+            </div>
+            <button type="submit" class="btn btn--gold bpanel__submit">
+              <span data-i18n="panel.submit">Continuer</span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <p class="bpanel__error" id="bp-error" role="alert" hidden></p>
+          <div class="slot-alternatives" id="bp-alternatives" hidden></div>
+          <p class="bpanel__note" id="bp-note"></p>
+        </form>
 
         <!-- Alternative : réservation par téléphone -->
         <div class="quick-book reveal">
@@ -195,85 +239,6 @@
             <svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>
             <span data-i18n="booking.call">Appeler</span>
           </a>
-        </div>
-
-        <form class="booking reveal" id="booking-form" novalidate>
-          <!-- Anti-spam : champ invisible, doit rester vide -->
-          <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-
-          <div class="form-alert" id="form-alert" role="alert" hidden></div>
-          <!-- Créneau complet : horaires de remplacement proposés ici -->
-          <div class="slot-alternatives" id="slot-alternatives" hidden></div>
-
-          <div class="field">
-            <label for="f-name" data-i18n="booking.name">Nom</label>
-            <input id="f-name" name="name" type="text" autocomplete="name" required maxlength="80">
-            <p class="field__error" id="f-name-err"></p>
-          </div>
-
-          <div class="field-row">
-            <div class="field">
-              <label for="f-phone" data-i18n="booking.phone">Téléphone</label>
-              <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required maxlength="25" placeholder="+33 / +49 …">
-              <p class="field__error" id="f-phone-err"></p>
-            </div>
-            <div class="field">
-              <label for="f-email" data-i18n="booking.email">Email</label>
-              <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="120">
-              <p class="field__error" id="f-email-err"></p>
-            </div>
-          </div>
-
-          <div class="field-row field-row--3">
-            <div class="field">
-              <label for="f-date" data-i18n="booking.date">Date</label>
-              <input id="f-date" name="date" type="date" required>
-              <p class="field__error" id="f-date-err"></p>
-            </div>
-            <div class="field">
-              <label for="f-time" data-i18n="booking.time">Heure</label>
-              <select id="f-time" name="time" required disabled>
-                <option value="" data-i18n="booking.time.pickDate">Date d'abord</option>
-              </select>
-              <p class="field__error" id="f-time-err"></p>
-            </div>
-            <div class="field">
-              <label for="f-persons" data-i18n="booking.persons">Personnes</label>
-              <select id="f-persons" name="persons" required></select>
-              <p class="field__error" id="f-persons-err"></p>
-            </div>
-          </div>
-          <p class="field__hint" id="persons-hint"></p>
-
-          <div class="field">
-            <label for="f-message"><span data-i18n="booking.message">Message</span> <span class="muted" data-i18n="booking.optional">(optionnel)</span></label>
-            <textarea id="f-message" name="message" rows="3" maxlength="500" data-i18n-placeholder="booking.messagePh" placeholder="Anniversaire, préférence de place…"></textarea>
-          </div>
-
-          <div class="field field--check">
-            <input id="f-age" name="age_confirmed" type="checkbox" required>
-            <label for="f-age" data-i18n="booking.age">Je confirme avoir 18 ans ou plus.</label>
-            <p class="field__error" id="f-age-err"></p>
-          </div>
-
-          <div class="field field--check">
-            <input id="f-privacy" name="privacy_accepted" type="checkbox" required>
-            <label for="f-privacy" data-i18n-html="booking.privacy">J'accepte la <a href="datenschutz.html#fr" target="_blank" rel="noopener">politique de confidentialité</a>.</label>
-            <p class="field__error" id="f-privacy-err"></p>
-          </div>
-
-          <button type="submit" class="btn btn--gold btn--block" id="f-submit">
-            <span data-i18n="booking.submit">Envoyer la demande</span>
-          </button>
-        </form>
-
-        <!-- Message de confirmation (affiché après envoi) -->
-        <div class="booking-success" id="booking-success" hidden tabindex="-1">
-          <div class="booking-success__icon" aria-hidden="true">✓</div>
-          <h3 id="success-title"></h3>
-          <p id="success-text"></p>
-          <p class="booking-success__recap" id="success-recap"></p>
-          <button type="button" class="btn btn--ghost" id="success-again" data-i18n="booking.success.again">Nouvelle demande</button>
         </div>
       </div>
     </section>
@@ -353,6 +318,7 @@
   <script src="js/config.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/calendar.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

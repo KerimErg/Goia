@@ -53,7 +53,29 @@ const GOIA_CONFIG = {
     maxDaysAhead: 60,         // réservation possible jusqu'à X jours à l'avance
     maxPersons: 12,           // maximum par réservation (au-delà : on invite à appeler)
     maxPersonsPerSlot: 20,    // CAPACITÉ : nombre total de personnes par créneau horaire
+    cancelHoursBefore: 2,     // le client peut annuler en ligne jusqu'à X heures avant
+    preorderMaxPerItem: 3,    // pré-commande de chichas : maximum par parfum
   },
+
+  /* ---- Espaces proposés à l'étape 1 de la réservation --------------------
+     Simple préférence (la capacité reste celle du créneau).
+     minPersons : espace proposé seulement à partir de X personnes.
+     recommended : affiche le badge « Recommandé ».
+     Pour supprimer cette étape : zones: []                                  */
+  zones: [
+    { id: "indifferent", recommended: true,
+      name: { fr: "Peu importe", de: "Egal" },
+      desc: { fr: "Nous vous plaçons au mieux selon l'affluence.", de: "Wir finden den besten freien Platz für euch." } },
+    { id: "lounge",
+      name: { fr: "Salon lounge", de: "Lounge" },
+      desc: { fr: "Canapés, lumière tamisée, au cœur de l'ambiance.", de: "Sofas, gedämpftes Licht, mitten im Geschehen." } },
+    { id: "terrasse",
+      name: { fr: "Terrasse", de: "Terrasse" },
+      desc: { fr: "Chauffée en hiver, selon la météo.", de: "Im Winter beheizt, je nach Wetter." } },
+    { id: "carre", minPersons: 6,
+      name: { fr: "Carré privé", de: "Private Ecke" },
+      desc: { fr: "Un espace rien que pour votre groupe, dès 6 personnes.", de: "Ein eigener Bereich für eure Gruppe, ab 6 Personen." } },
+  ],
 };
 
 // Rend la configuration disponible pour le navigateur et pour le serveur (Vercel)

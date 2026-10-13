@@ -1,6 +1,7 @@
 /* Emails automatiques envoyés avec Resend (https://resend.com).
-   - au client : réception de la demande, puis confirmation ou refus (FR ou DE)
-   - au bar : notification à chaque nouvelle demande
+   - au client : confirmation (avec référence et lien « Gérer ma réservation »),
+     annulation par le bar, confirmation de son annulation — en FR ou en DE
+   - au bar : nouvelle réservation, annulation par un client
    Variables d'environnement : RESEND_API_KEY, EMAIL_FROM, BAR_EMAIL.
    Un échec d'envoi n'empêche jamais l'enregistrement de la réservation. */
 
@@ -18,65 +19,75 @@ function formatDate(ymd, lang) {
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+const eur = (n, lang) => new Intl.NumberFormat(lang === "de" ? "de-DE" : "fr-FR", { style: "currency", currency: "EUR" }).format(n);
 const hhmm = (t) => String(t).slice(0, 5);
 const firstName = (nom) => String(nom).trim().split(/\s+/)[0];
+const zoneName = (id, lang) => {
+  const z = (CONFIG.zones || []).find((x) => x.id === id);
+  return z ? z.name[lang] || z.name.fr : "";
+};
+const preorderText = (r, lang) => (r.precommande || [])
+  .map((l) => `${l.quantite} × ${lang === "de" ? l.nom_de || l.nom : l.nom}`).join(", ");
 
 /* ---------- Textes FR / DE ---------- */
 const TEXT = {
   fr: {
-    received: {
-      subject: "Le Goia — Demande de réservation reçue",
-      title: "Demande bien reçue",
-      intro: (r) => `Bonjour ${firstName(r.nom)}, merci pour votre demande ! Nous l'examinons et vous envoyons très vite un email de confirmation.`,
-      note: "Votre table n'est pas encore confirmée.",
-    },
     confirmee: {
-      subject: "Le Goia — Votre réservation est confirmée ✔",
-      title: "Réservation confirmée",
-      intro: (r) => `Bonjour ${firstName(r.nom)}, bonne nouvelle : votre table est réservée. Nous avons hâte de vous accueillir !`,
-      note: "Un empêchement ? Merci de nous prévenir par téléphone. L'accès est réservé aux personnes majeures (pièce d'identité possible à l'entrée).",
+      subject: (r) => `Le Goia — Réservation confirmée ${r.reference}`,
+      title: (r) => `C'est réservé, ${firstName(r.nom)} !`,
+      intro: () => "Votre table vous attend. Voici le récapitulatif de votre réservation.",
+      note: () => `Pièce d'identité demandée à l'entrée : le Goia est réservé aux personnes majeures. Un empêchement ? Annulez en ligne jusqu'à ${CONFIG.reservation.cancelHoursBefore} h avant, ou appelez-nous.`,
+      button: "Gérer ma réservation",
     },
-    refusee: {
-      subject: "Le Goia — Votre demande de réservation",
-      title: "Réservation impossible",
-      intro: (r) => `Bonjour ${firstName(r.nom)}, nous sommes désolés : nous ne pouvons malheureusement pas accepter votre demande pour ce créneau.`,
-      note: "N'hésitez pas à choisir un autre horaire sur notre site ou à nous appeler, nous ferons notre possible.",
+    annulee: {
+      subject: (r) => `Le Goia — Réservation ${r.reference} annulée`,
+      title: () => "Réservation annulée",
+      intro: (r) => `Bonjour ${firstName(r.nom)}, nous sommes désolés : nous avons dû annuler votre réservation.`,
+      note: () => "N'hésitez pas à réserver un autre créneau sur notre site ou à nous appeler, nous ferons notre possible.",
     },
-    labels: { date: "Date", heure: "Heure", personnes: "Personnes", status: "Statut" },
-    pending: "En attente de confirmation",
+    annulee_client: {
+      subject: (r) => `Le Goia — Annulation de la réservation ${r.reference}`,
+      title: () => "Annulation confirmée",
+      intro: (r) => `Bonjour ${firstName(r.nom)}, votre réservation a bien été annulée. À bientôt au Goia !`,
+      note: () => "",
+    },
+    labels: { reference: "Référence", date: "Date", heure: "Heure", personnes: "Personnes", espace: "Espace", precommande: "Pré-commande", total: "Estimation (à régler sur place)" },
     footer: "Réservé aux personnes majeures (18+).",
   },
   de: {
-    received: {
-      subject: "Le Goia — Reservierungsanfrage erhalten",
-      title: "Anfrage erhalten",
-      intro: (r) => `Hallo ${firstName(r.nom)}, danke für deine Anfrage! Wir prüfen sie und schicken dir in Kürze eine Bestätigung per E-Mail.`,
-      note: "Dein Tisch ist noch nicht bestätigt.",
-    },
     confirmee: {
-      subject: "Le Goia — Deine Reservierung ist bestätigt ✔",
-      title: "Reservierung bestätigt",
-      intro: (r) => `Hallo ${firstName(r.nom)}, gute Nachrichten: Dein Tisch ist reserviert. Wir freuen uns auf dich!`,
-      note: "Du kannst nicht kommen? Bitte sag uns telefonisch Bescheid. Zutritt nur ab 18 Jahren (Ausweiskontrolle möglich).",
+      subject: (r) => `Le Goia — Reservierung bestätigt ${r.reference}`,
+      title: (r) => `Reserviert, ${firstName(r.nom)}!`,
+      intro: () => "Dein Tisch wartet auf dich. Hier ist die Zusammenfassung deiner Reservierung.",
+      note: () => `Ausweiskontrolle am Eingang: Zutritt nur ab 18 Jahren. Du kannst nicht kommen? Storniere online bis ${CONFIG.reservation.cancelHoursBefore} Std. vorher oder ruf uns an.`,
+      button: "Reservierung verwalten",
     },
-    refusee: {
-      subject: "Le Goia — Deine Reservierungsanfrage",
-      title: "Reservierung leider nicht möglich",
-      intro: (r) => `Hallo ${firstName(r.nom)}, es tut uns leid: Für diesen Zeitpunkt können wir deine Anfrage leider nicht annehmen.`,
-      note: "Wähle gerne eine andere Uhrzeit auf unserer Website oder ruf uns an – wir finden bestimmt eine Lösung.",
+    annulee: {
+      subject: (r) => `Le Goia — Reservierung ${r.reference} storniert`,
+      title: () => "Reservierung storniert",
+      intro: (r) => `Hallo ${firstName(r.nom)}, es tut uns leid: Wir mussten deine Reservierung leider stornieren.`,
+      note: () => "Reserviere gerne einen anderen Termin auf unserer Website oder ruf uns an – wir finden bestimmt eine Lösung.",
     },
-    labels: { date: "Datum", heure: "Uhrzeit", personnes: "Personen", status: "Status" },
-    pending: "Wartet auf Bestätigung",
+    annulee_client: {
+      subject: (r) => `Le Goia — Stornierung der Reservierung ${r.reference}`,
+      title: () => "Stornierung bestätigt",
+      intro: (r) => `Hallo ${firstName(r.nom)}, deine Reservierung wurde storniert. Bis bald im Goia!`,
+      note: () => "",
+    },
+    labels: { reference: "Referenz", date: "Datum", heure: "Uhrzeit", personnes: "Personen", espace: "Bereich", precommande: "Vorbestellung", total: "Schätzung (vor Ort zu zahlen)" },
     footer: "Nur für Volljährige (18+).",
   },
 };
 
 /* ---------- Mise en page commune ---------- */
-function layout({ title, intro, rows, note, footer }) {
+function layout({ title, intro, rows, note, footer, button }) {
   const ad = CONFIG.address;
   const rowsHtml = rows.map(([k, v]) =>
-    `<tr><td style="padding:6px 0;color:#7a7368;width:120px">${esc(k)}</td><td style="padding:6px 0;font-weight:600;color:#1b1a1d">${esc(v)}</td></tr>`
+    `<tr><td style="padding:6px 12px 6px 0;color:#7a7368;vertical-align:top;width:130px">${esc(k)}</td><td style="padding:6px 0;font-weight:600;color:#1b1a1d">${esc(v)}</td></tr>`
   ).join("");
+  const btn = button
+    ? `<p style="margin:0 0 18px"><a href="${esc(button.url)}" style="display:inline-block;background:#c9a45c;color:#1a140a;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${esc(button.label)}</a></p>`
+    : "";
   return `<!doctype html><html><body style="margin:0;background:#f4f1ec;font-family:Arial,Helvetica,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ec;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:14px;overflow:hidden">
@@ -85,6 +96,7 @@ function layout({ title, intro, rows, note, footer }) {
 <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-weight:normal;font-size:24px;color:#1b1a1d">${esc(title)}</h1>
 <p style="margin:0 0 18px;line-height:1.55;color:#3a3833">${esc(intro)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #ece6db;border-bottom:1px solid #ece6db;margin:0 0 18px;font-size:15px">${rowsHtml}</table>
+${btn}
 ${note ? `<p style="margin:0;line-height:1.55;color:#5b574f;font-size:14px">${esc(note)}</p>` : ""}
 </td></tr>
 <tr><td style="padding:18px 28px;background:#faf8f4;color:#8a8478;font-size:12px;line-height:1.6">
@@ -92,8 +104,9 @@ Le Goia · ${esc(ad.street)}, ${esc(ad.zip)} ${esc(ad.city)} · ${esc(CONFIG.pho
 </td></tr></table></td></tr></table></body></html>`;
 }
 
-const toText = ({ title, intro, rows, note }) =>
-  [title, "", intro, "", ...rows.map(([k, v]) => `${k} : ${v}`), "", note || "", "", `Le Goia · ${CONFIG.phoneDisplay}`].join("\n");
+const toText = ({ title, intro, rows, note, button }) =>
+  [title, "", intro, "", ...rows.map(([k, v]) => `${k} : ${v}`), "",
+    button ? `${button.label} : ${button.url}` : "", note || "", "", `Le Goia · ${CONFIG.phoneDisplay}`].join("\n");
 
 /* ---------- Envoi via l'API Resend ---------- */
 async function sendEmail({ to, subject, parts, replyTo }) {
@@ -124,50 +137,67 @@ async function sendEmail({ to, subject, parts, replyTo }) {
   }
 }
 
-function detailRows(r, lang, statusLabel) {
+function detailRows(r, lang) {
   const L = TEXT[lang].labels;
-  const rows = [[L.date, formatDate(r.date, lang)], [L.heure, hhmm(r.heure)], [L.personnes, String(r.personnes)]];
-  if (statusLabel) rows.push([L.status, statusLabel]);
+  const rows = [
+    [L.reference, r.reference],
+    [L.date, formatDate(r.date, lang)],
+    [L.heure, hhmm(r.heure)],
+    [L.personnes, String(r.personnes)],
+  ];
+  if (r.espace && zoneName(r.espace, lang)) rows.push([L.espace, zoneName(r.espace, lang)]);
+  if ((r.precommande || []).length) {
+    rows.push([L.precommande, preorderText(r, lang)]);
+    rows.push([L.total, eur(Number(r.total_estime), lang)]);
+  }
   return rows;
 }
 
-/** Email au client : « demande reçue » (kind = "received") ou décision ("confirmee" / "refusee"). */
-function sendCustomerEmail(r, kind) {
+/**
+ * Email au client.
+ * kind : "confirmee" (avec manageUrl), "annulee" (par le bar) ou "annulee_client".
+ */
+function sendCustomerEmail(r, kind, manageUrl) {
   const lang = r.langue === "de" ? "de" : "fr";
   const T = TEXT[lang];
   const t = T[kind];
   return sendEmail({
     to: r.email,
-    subject: t.subject,
+    subject: t.subject(r),
     replyTo: process.env.BAR_EMAIL || CONFIG.email,
     parts: {
-      title: t.title,
+      title: t.title(r),
       intro: t.intro(r),
-      rows: detailRows(r, lang, kind === "received" ? T.pending : null),
-      note: t.note,
+      rows: detailRows(r, lang),
+      note: t.note(r),
       footer: T.footer,
+      button: kind === "confirmee" && manageUrl ? { label: t.button, url: manageUrl } : null,
     },
   });
 }
 
-/** Notification au bar à chaque nouvelle demande (toujours en français). */
-function sendBarNotification(r, adminUrl) {
+/** Notification au bar (toujours en français) : kind = "nouvelle" ou "annulation_client". */
+function sendBarNotification(r, kind, adminUrl) {
   const to = process.env.BAR_EMAIL;
   if (!to) { console.warn("[emails] BAR_EMAIL manquant : notification non envoyée"); return Promise.resolve(false); }
+  const cancel = kind === "annulation_client";
   return sendEmail({
     to,
-    subject: `Nouvelle réservation : ${r.nom} — ${formatDate(r.date, "fr")} ${hhmm(r.heure)} (${r.personnes} pers.)`,
+    subject: `${cancel ? "Annulation client" : "Nouvelle réservation"} ${r.reference} : ${r.nom} — ${formatDate(r.date, "fr")} ${hhmm(r.heure)} (${r.personnes} pers.)`,
     replyTo: r.email,
     parts: {
-      title: "Nouvelle demande de réservation",
-      intro: `À confirmer ou refuser dans le panneau admin : ${adminUrl}`,
+      title: cancel ? "Un client a annulé sa réservation" : "Nouvelle réservation confirmée",
+      intro: cancel
+        ? "La place est de nouveau disponible pour ce créneau."
+        : "La réservation est confirmée automatiquement (place disponible). Vous pouvez la modifier ou l'annuler dans le panneau admin.",
       rows: [
         ["Nom", r.nom], ["Téléphone", r.telephone], ["Email", r.email],
         ...detailRows(r, "fr"),
         ["Message", r.message || "—"], ["Langue", String(r.langue).toUpperCase()],
       ],
-      note: "Le client a reçu un email l'informant que sa demande est en attente.",
+      note: "",
       footer: "Email automatique du site Le Goia.",
+      button: { label: "Ouvrir le panneau admin", url: adminUrl },
     },
   });
 }

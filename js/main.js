@@ -8,7 +8,7 @@
      4. Navigation
      5. Menu (chargé depuis data/menu.json)
      6. Horaires & statut « ouvert maintenant »
-     7. Formulaire de réservation
+     7. Panneau de réservation (date, horaire, personnes)
      8. WhatsApp, téléphone, réseaux (depuis js/config.js)
      9. Carte Google Maps (chargée après clic)
     10. Animations d'apparition
@@ -23,7 +23,6 @@
   const I18N = window.GOIA_I18N;
   const RULES = window.GOIA_RULES; // règles horaires partagées avec le serveur (js/rules.js)
   const LANGS = ["fr", "de"];
-  const API_RESERVATIONS = "/api/reservations";
   const API_AVAILABILITY = "/api/availability";
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -53,13 +52,6 @@
   const locale = () => (lang === "de" ? "de-DE" : "fr-FR");
   const { nowInKehl, weekdayOf, addDays } = RULES;
   const dayRange = (dayIndex) => RULES.dayRange(CONFIG, dayIndex);
-
-  function formatDateLong(ymd) {
-    const [y, m, d] = ymd.split("-").map(Number);
-    return new Intl.DateTimeFormat(locale(), {
-      weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
-    }).format(new Date(Date.UTC(y, m - 1, d)));
-  }
 
   /* ======================================================================
      2. Langue FR / DE
@@ -94,11 +86,9 @@
     // Contenus générés dynamiquement
     renderMenu();
     renderHours();
-    refreshTimeSlots();
-    renderPersons();
-    refreshVisibleErrors();
+    renderPanel();
+    if (calendar) calendar.render();
     updateWhatsAppLinks();
-    if (!$("#booking-success").hidden) showSuccess(lastBooking);
   }
 
   function initLang() {
@@ -353,146 +343,81 @@
   }
 
   /* ======================================================================
-     7. Formulaire de réservation
+     7. Panneau de réservation (date, horaire, personnes)
      ====================================================================== */
 
-  const form = $("#booking-form");
-  const fields = {
-    name: $("#f-name"),
-    phone: $("#f-phone"),
-    email: $("#f-email"),
-    date: $("#f-date"),
-    time: $("#f-time"),
-    persons: $("#f-persons"),
-    age: $("#f-age"),
-    privacy: $("#f-privacy"),
-  };
-  let lastBooking = null;
-  let slotAvailability = {};   // places restantes par créneau pour la date choisie, ex. { "21:00": 6 }
+  /* Panneau de réservation (même rôle que le panneau de recherche du site de
+     location) : date au calendrier, horaire, personnes → étapes sur /reservation/ */
+  const panel = $("#booking-panel");
+  const bp = { date: "", time: "", persons: 2 };
+  let slotAvailability = {};   // places restantes par créneau pour la date choisie
   let availabilityRequest = 0;
-  let lastAlternatives = [];
-  const formOpenedAt = Date.now(); // anti-robot : un humain met plus de 3 s à remplir le formulaire
+  let panelErrorKey = "";
+  let calendar = null;
 
-  /** Chaque règle renvoie la clé du message d'erreur, ou "" si c'est valide. */
-  const validators = {
-    name: (v) => (v.trim().length >= 2 ? "" : "err.name"),
-    phone: (v) => (/^\+?\d{6,15}$/.test(v.replace(/[\s().\/-]/g, "")) ? "" : "err.phone"),
-    email: (v) => (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? "" : "err.email"),
-    date: (v) => {
-      if (!v) return "err.date";
-      if (v < nowInKehl().ymd) return "err.datePast";
-      if (!dayRange(weekdayOf(v))) return "err.dateClosed";
-      return "";
-    },
-    time: (v) => (v ? "" : "err.time"),
-    persons: (v) => (v ? "" : "err.persons"),
-    age: (_, el) => (el.checked ? "" : "err.age"),
-    privacy: (_, el) => (el.checked ? "" : "err.privacy"),
+  const formatDateShort = (ymd) => {
+    const [y, m, d] = ymd.split("-").map(Number);
+    return new Intl.DateTimeFormat(locale(), { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" })
+      .format(new Date(Date.UTC(y, m - 1, d)));
   };
 
-  /** Affiche (ou efface si key = "") l'erreur d'un champ. */
-  function setFieldError(name, key) {
-    const el = fields[name];
-    if (!el) return;
-    const wrap = el.closest(".field");
-    const msg = $(`#${el.id}-err`);
-    wrap.classList.toggle("has-error", !!key);
-    el.setAttribute("aria-invalid", String(!!key));
-    if (key) el.setAttribute("aria-describedby", msg.id);
-    else el.removeAttribute("aria-describedby");
-    msg.dataset.key = key;
-    msg.textContent = key ? t(key) : "";
+  /** Texte sous le calendrier : jours de fermeture + réservation jusqu'à N jours. */
+  function calendarFooter() {
+    const closed = [1, 2, 3, 4, 5, 6, 0].filter((d) => !CONFIG.hours[d]).map((d) => t(`day.${d}`).toLowerCase());
+    const range = t("cal.range", { n: CONFIG.reservation.maxDaysAhead });
+    return closed.length ? `${t("cal.closed", { days: closed.join(", ") })} · ${range}` : range;
   }
 
-  function validateField(name) {
-    const el = fields[name];
-    const key = validators[name](el.value, el);
-    setFieldError(name, key);
-    return !key;
+  function showPanelError(key) {
+    panelErrorKey = key;
+    const box = $("#bp-error");
+    box.textContent = key ? t(key) : "";
+    box.hidden = !key;
   }
 
-  function focusFirstInvalid() {
-    const first = Object.values(fields).find((el) => el.getAttribute("aria-invalid") === "true");
-    if (first) first.focus();
-  }
+  function renderPanel() {
+    $("#bp-date-value").textContent = bp.date ? formatDateShort(bp.date) : t("panel.datePh");
+    $("#bp-date").classList.toggle("is-empty", !bp.date);
 
-  /** Après un changement de langue, retraduit les erreurs déjà affichées. */
-  function refreshVisibleErrors() {
-    $$(".field__error").forEach((p) => { if (p.dataset.key) p.textContent = t(p.dataset.key); });
-    const alert = $("#form-alert");
-    if (!alert.hidden && alert.dataset.key) alert.textContent = t(alert.dataset.key);
-  }
-
-  function showAlert(key) {
-    const alert = $("#form-alert");
-    alert.dataset.key = key || "";
-    alert.textContent = key ? t(key) : "";
-    alert.hidden = !key;
-    if (!key) showAlternatives([]);
-  }
-
-  /** Créneau complet : propose des horaires proches encore disponibles (boutons). */
-  function showAlternatives(times) {
-    lastAlternatives = times;
-    const box = $("#slot-alternatives");
-    box.innerHTML = "";
-    box.hidden = !times.length;
-    times.forEach((time) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "slot-chip";
-      b.textContent = time;
-      b.addEventListener("click", () => {
-        fields.time.value = time;
-        validateField("time");
-        showAlert("");
-        $("#f-submit").focus();
-      });
-      box.appendChild(b);
-    });
-  }
-
-  /** Bornes du calendrier : aujourd'hui → aujourd'hui + N jours. */
-  function initDateInput() {
-    const today = nowInKehl().ymd;
-    fields.date.min = today;
-    fields.date.max = addDays(today, CONFIG.reservation.maxDaysAhead);
-  }
-
-  /** Créneaux selon le jour choisi ; les créneaux complets sont grisés. */
-  function refreshTimeSlots() {
-    const select = fields.time;
-    const date = fields.date.value;
-    const previous = select.value;
+    // Horaires du jour choisi ; un créneau sans assez de places est grisé « complet »
+    const select = $("#bp-time");
     select.innerHTML = "";
-
-    const addOption = (value, text, disabled) => {
+    const add = (value, text, disabled) => {
       const o = document.createElement("option");
-      o.value = value;
-      o.textContent = text;
-      o.disabled = !!disabled;
+      o.value = value; o.textContent = text; o.disabled = !!disabled;
       select.appendChild(o);
     };
-
-    const range = date ? dayRange(weekdayOf(date)) : null;
-    const slots = range ? RULES.slotsFor(CONFIG, date) : [];
+    const slots = bp.date ? RULES.slotsFor(CONFIG, bp.date) : [];
+    const isFull = (s) => slotAvailability[s] !== undefined && slotAvailability[s] < bp.persons;
     if (!slots.length) {
-      addOption("", t(date && !range ? "booking.time.closed" : date ? "booking.time.none" : "booking.time.pickDate"));
+      add("", bp.date ? t("booking.time.none") : "—");
       select.disabled = true;
-      return;
+    } else {
+      add("", t("booking.time.choose"));
+      slots.forEach((s) => add(s, isFull(s) ? `${s} — ${t("booking.time.full")}` : s, isFull(s)));
+      select.disabled = false;
     }
+    if (!slots.includes(bp.time) || isFull(bp.time)) bp.time = "";
+    select.value = bp.time;
 
-    const persons = Number(fields.persons.value) || 1;
-    const isFull = (s) => slotAvailability[s] !== undefined && slotAvailability[s] < persons;
-    addOption("", t("booking.time.choose"));
-    slots.forEach((s) => addOption(s, isFull(s) ? `${s} — ${t("booking.time.full")}` : s, isFull(s)));
-    select.disabled = false;
-    if (slots.includes(previous) && !isFull(previous)) select.value = previous;
+    const max = CONFIG.reservation.maxPersons;
+    $("#bp-persons-value").textContent = String(bp.persons);
+    $("#bp-less").disabled = bp.persons <= 1;
+    $("#bp-more").disabled = bp.persons >= max;
+    $("#bp-note").textContent = bp.persons >= max
+      ? t("booking.persons.more", { max })
+      : t("panel.note", { h: CONFIG.reservation.cancelHoursBefore });
+
+    // Tous les créneaux du jour sont complets pour ce groupe
+    const allFull = slots.length && slots.every(isFull);
+    if (allFull) showPanelError("booking.fullNoAlt");
+    else if (panelErrorKey === "booking.fullNoAlt") showPanelError("");
+    else if (panelErrorKey) showPanelError(panelErrorKey);
   }
 
   /** Demande au serveur les places restantes pour la date choisie. */
   async function loadAvailability() {
-    const date = fields.date.value;
+    const date = bp.date;
     const requestId = ++availabilityRequest;
     slotAvailability = {};
     if (!date) return;
@@ -500,156 +425,58 @@
       const res = await fetch(`${API_AVAILABILITY}?date=${encodeURIComponent(date)}`, { cache: "no-store" });
       if (!res.ok) return;
       const json = await res.json();
-      if (requestId !== availabilityRequest) return; // une date plus récente a été choisie entre-temps
+      if (requestId !== availabilityRequest) return; // une autre date a été choisie entre-temps
       json.slots.forEach((s) => { slotAvailability[s.time] = s.remaining; });
-      refreshTimeSlots();
+      renderPanel();
     } catch (e) {
-      // Serveur injoignable : on garde tous les créneaux, le serveur revérifiera à l'envoi.
+      // Serveur injoignable : tous les créneaux restent proposés, le serveur revérifiera.
     }
   }
 
-  function renderPersons() {
-    const select = fields.persons;
-    const current = select.value || "2";
+  function initBookingPanel() {
+    const now = nowInKehl();
     const max = CONFIG.reservation.maxPersons;
-    select.innerHTML = "";
-    for (let i = 1; i <= max; i++) {
-      const o = document.createElement("option");
-      o.value = String(i);
-      o.textContent = String(i);
-      select.appendChild(o);
-    }
-    select.value = Number(current) <= max ? current : "2";
-    $("#persons-hint").textContent = t("booking.persons.more", { max });
-  }
 
-  function showSuccess(data) {
-    if (!data) return;
-    $("#success-title").textContent = t("booking.success.title", { name: data.name.split(" ")[0] });
-    $("#success-text").textContent = t("booking.success.text");
-    $("#success-recap").textContent = t("booking.success.recap", {
-      date: formatDateLong(data.date), time: data.time, persons: data.persons,
-    });
-  }
+    // Retour depuis /reservation/ (« Modifier la date et l'heure ») : on reprend les choix
+    const params = new URLSearchParams(location.search);
+    if (RULES.slotsFor(CONFIG, params.get("date") || "").length) bp.date = params.get("date");
+    if (params.get("time")) bp.time = params.get("time");
+    const p = Number.parseInt(params.get("persons"), 10);
+    if (p >= 1 && p <= max) bp.persons = p;
 
-  function initBookingForm() {
-    initDateInput();
-    renderPersons();
-
-    // Validation en direct : au départ d'un champ, puis à chaque saisie si erreur
-    Object.keys(fields).forEach((name) => {
-      const el = fields[name];
-      const isCheck = el.type === "checkbox";
-      el.addEventListener(isCheck || el.tagName === "SELECT" ? "change" : "blur", () => {
-        if (isCheck || el.value) validateField(name);
-      });
-      el.addEventListener("input", () => {
-        if (el.closest(".field").classList.contains("has-error")) validateField(name);
-      });
+    calendar = window.GoiaCalendar.create({
+      anchor: $("#bp-date"),
+      getValue: () => bp.date,
+      onSelect: (ymd) => {
+        bp.date = ymd;
+        bp.time = "";
+        showPanelError("");
+        renderPanel();
+        loadAvailability();
+      },
+      isDisabled: (ymd) => !RULES.slotsFor(CONFIG, ymd).length,
+      min: now.ymd,
+      max: addDays(now.ymd, CONFIG.reservation.maxDaysAhead),
+      locale,
+      t,
+      footer: calendarFooter,
     });
 
-    fields.date.addEventListener("change", () => {
-      showAlert("");
-      refreshTimeSlots();
-      loadAvailability();
-      validateField("date");
-      if (fields.time.closest(".field").classList.contains("has-error")) validateField("time");
-    });
-    fields.persons.addEventListener("change", refreshTimeSlots);
+    $("#bp-time").addEventListener("change", (e) => { bp.time = e.target.value; showPanelError(""); });
+    const setPersons = (n) => { bp.persons = Math.min(Math.max(n, 1), max); renderPanel(); };
+    $("#bp-less").addEventListener("click", () => setPersons(bp.persons - 1));
+    $("#bp-more").addEventListener("click", () => setPersons(bp.persons + 1));
 
-    form.addEventListener("submit", async (e) => {
+    panel.addEventListener("submit", (e) => {
       e.preventDefault();
-      showAlert("");
-
-      // Re-calcule les créneaux (au cas où la page est restée ouverte longtemps)
-      refreshTimeSlots();
-      const results = Object.keys(fields).map(validateField);
-      if (results.includes(false)) {
-        showAlert("err.summary");
-        focusFirstInvalid();
-        return;
-      }
-
-      const data = {
-        name: fields.name.value.trim(),
-        phone: fields.phone.value.trim(),
-        email: fields.email.value.trim(),
-        date: fields.date.value,
-        time: fields.time.value,
-        persons: fields.persons.value,
-        message: $("#f-message").value.trim(),
-      };
-
-      const btn = $("#f-submit");
-      const label = $("span", btn);
-      btn.disabled = true;
-      label.textContent = t("booking.sending");
-
-      try {
-        const res = await fetch(API_RESERVATIONS, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            ...data,
-            age: fields.age.checked,
-            privacy: fields.privacy.checked,
-            lang,
-            botcheck: form.botcheck.checked,
-            elapsed: Date.now() - formOpenedAt,
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-
-        if (res.status === 201 && json.ok) {
-          finish(data);
-        } else if (res.status === 422 && json.fields) {
-          // Le serveur a refusé certains champs : on les signale comme le ferait le navigateur
-          Object.entries(json.fields).forEach(([name, key]) => setFieldError(name, key));
-          showAlert("err.summary");
-          focusFirstInvalid();
-        } else if (res.status === 409) {
-          // Créneau complet (quelqu'un a réservé entre-temps) : on propose d'autres horaires
-          slotAvailability[data.time] = json.remaining || 0;
-          refreshTimeSlots();
-          const alts = json.alternatives || [];
-          showAlert(alts.length ? "booking.full" : "booking.fullNoAlt");
-          showAlternatives(alts);
-          loadAvailability();
-        } else if (res.status === 429) {
-          showAlert("booking.error.rateLimited");
-        } else {
-          throw new Error(json.error || res.status);
-        }
-      } catch (err) {
-        console.error("[Le Goia] Échec de l'envoi :", err);
-        showAlert("booking.error.generic");
-      } finally {
-        btn.disabled = false;
-        label.textContent = t("booking.submit");
-      }
+      if (!bp.date) { showPanelError("panel.errDate"); $("#bp-date").focus(); return; }
+      if (!bp.time) { showPanelError("panel.errTime"); $("#bp-time").focus(); return; }
+      const query = new URLSearchParams({ date: bp.date, time: bp.time, persons: String(bp.persons), lang });
+      location.href = `reservation/?${query}`;
     });
 
-    function finish(data) {
-      lastBooking = data;
-      showSuccess(data);
-      form.hidden = true;
-      const box = $("#booking-success");
-      box.hidden = false;
-      box.focus({ preventScroll: true });
-      box.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-
-    $("#success-again").addEventListener("click", () => {
-      form.reset();
-      slotAvailability = {};
-      renderPersons();
-      refreshTimeSlots();
-      showAlert("");
-      Object.keys(fields).forEach((name) => setFieldError(name, ""));
-      $("#booking-success").hidden = true;
-      form.hidden = false;
-      fields.name.focus();
-    });
+    renderPanel();
+    if (bp.date) loadAvailability();
   }
 
   /* ======================================================================
@@ -725,7 +552,7 @@
   applyConfig();
   initNav();
   initLang();
-  initBookingForm();
+  initBookingPanel();
   initMap();
   initReveal();
   setLang(detectLang(), false);

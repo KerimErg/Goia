@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#0B0A0C">
   <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/booking.css">
   <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body class="admin">
@@ -38,8 +39,15 @@
       </form>
     </section>
 
-    <!-- ============ Liste des réservations ============ -->
+    <!-- ============ Tableau de bord + réservations ============ -->
     <section id="list-view" hidden>
+      <div class="page-head">
+        <h1>Réservations</h1>
+        <p class="muted" id="updated-at"></p>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+
       <div class="filters">
         <div class="filters__chips" role="group" aria-label="Période">
           <button type="button" class="chip" data-range="today" aria-pressed="false">Ce soir</button>
@@ -51,14 +59,14 @@
             <span>Date</span>
             <input type="date" id="filter-date">
           </label>
-          <label class="toggle">
-            <input type="checkbox" id="show-refused">
-            <span>Afficher les refusées</span>
+          <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input type="search" id="search" placeholder="Référence, nom, e-mail, téléphone…" aria-label="Rechercher">
           </label>
         </div>
+        <div class="status-tabs" id="status-tabs" role="group" aria-label="Statut"></div>
       </div>
 
-      <p class="pending-banner" id="pending-banner" hidden></p>
       <p class="admin-status" id="list-status" role="status"></p>
       <div id="days"></div>
     </section>

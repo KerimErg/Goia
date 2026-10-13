@@ -70,16 +70,14 @@
   border-radius: 12px; padding: 1rem; margin-bottom: .7rem;
 }
 .resa--confirmee { border-left-color: var(--success); }
-.resa--refusee { border-left-color: var(--error); opacity: .6; }
+.resa--en_cours { border-left-color: #9cc3f0; }
+.resa--terminee { border-left-color: var(--muted); opacity: .75; }
+.resa--annulee { border-left-color: var(--error); opacity: .6; }
 .resa__top { display: flex; align-items: center; gap: .8rem; }
 .resa__time { font-family: var(--font-display); font-size: 1.9rem; line-height: 1; color: var(--gold-light); font-variant-numeric: tabular-nums; }
 .resa__who { flex: 1; min-width: 0; }
 .resa__name { font-weight: 600; overflow-wrap: anywhere; }
 .resa__persons { font-size: .85rem; color: var(--muted); }
-.pill { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: .25rem .6rem; border-radius: 999px; white-space: nowrap; }
-.pill--en_attente { background: rgba(201, 164, 92, .15); color: var(--gold-light); }
-.pill--confirmee { background: rgba(143, 199, 154, .15); color: var(--success); }
-.pill--refusee { background: rgba(232, 138, 122, .15); color: var(--error); }
 .resa__contact { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin-top: .7rem; font-size: .9rem; }
 .resa__contact a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--muted); overflow-wrap: anywhere; }
 .resa__msg { margin-top: .6rem; padding: .6rem .8rem; background: rgba(11, 10, 12, .5); border-radius: 8px; font-size: .9rem; color: rgba(238, 231, 218, .85); white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -96,3 +94,42 @@
   box-shadow: 0 12px 40px -10px rgba(0, 0, 0, .8); animation: fadeUp .3s var(--ease);
 }
 .toast--warn { border-color: rgba(232, 138, 122, .6); }
+
+/* Tableau de bord (comme les 4 indicateurs du site de location) */
+.page-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem 1rem; margin: .8rem 0 1rem; }
+.page-head h1 { font-size: 2.2rem; }
+.page-head .muted { font-size: .8rem; }
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7rem; margin-bottom: 1.2rem; }
+@media (min-width: 720px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: .9rem 1rem; }
+.kpi__label { font-size: .75rem; color: var(--muted); }
+.kpi__value { font-family: var(--font-display); font-size: 2rem; line-height: 1.1; margin-top: .2rem; color: var(--gold-light); }
+.kpi__sub { font-size: .72rem; color: var(--muted); margin-top: .15rem; }
+
+.search { position: relative; flex: 1; min-width: 220px; }
+.search svg { position: absolute; left: .8rem; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); color: var(--muted); }
+.search input {
+  width: 100%; min-height: 42px; padding: .4rem .8rem .4rem 2.4rem; border-radius: 10px;
+  border: 1px solid rgba(238, 231, 218, .14); background: rgba(11, 10, 12, .6); color: var(--text); font-size: 1rem;
+}
+.search input:focus { outline: none; border-color: var(--gold); }
+.status-tabs { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; padding-bottom: .2rem; }
+.status-tabs::-webkit-scrollbar { display: none; }
+.status-tab {
+  flex: none; min-height: 34px; padding: .3rem .8rem; border-radius: 999px; border: 0;
+  background: var(--surface); color: var(--muted); font-size: .78rem; font-weight: 500; cursor: pointer;
+}
+.status-tab[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+
+.resa__ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; color: var(--muted); letter-spacing: .04em; }
+.resa__extras { margin-top: .5rem; font-size: .85rem; color: rgba(238, 231, 218, .85); display: grid; gap: .15rem; }
+.resa__extras span { color: var(--muted); }
+.resa__actions { align-items: center; justify-content: space-between; }
+.status-select {
+  -webkit-appearance: none; appearance: none;
+  min-height: 40px; padding: .35rem 2rem .35rem .9rem; border-radius: 999px; border: 1px solid var(--line);
+  background: rgba(11, 10, 12, .6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c9a45c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right .8rem center;
+  color: var(--text); font-size: .85rem; cursor: pointer;
+}
+.status-select:disabled { opacity: .5; }
+.status-select option { background: var(--bg-2); }

@@ -379,14 +379,6 @@ p { margin: 0; }
 .quick-book .btn { flex: 1 1 200px; }
 @media (min-width: 560px) { .quick-book .btn { flex: 0 1 auto; } }
 
-.booking, .booking-success {
-  background: linear-gradient(180deg, rgba(30, 28, 34, .9), rgba(22, 21, 26, .9));
-  border: 1px solid var(--line);
-  border-radius: calc(var(--radius) + 6px);
-  padding: 1.5rem 1.25rem;
-  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .8);
-}
-@media (min-width: 640px) { .booking, .booking-success { padding: 2.25rem; } }
 
 .field { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1.1rem; }
 .field-row { display: grid; gap: 0 1rem; }
@@ -455,17 +447,6 @@ p { margin: 0; }
 .slot-chip:hover, .slot-chip:focus-visible { background: var(--gold); color: #1a140a; }
 .field select option:disabled { color: var(--muted); }
 
-.booking-success { text-align: center; animation: fadeUp .6s var(--ease); }
-.booking-success:focus { outline: none; }
-.booking-success__icon {
-  width: 64px; height: 64px; margin: 0 auto 1.2rem; border-radius: 50%;
-  display: grid; place-items: center; font-size: 1.8rem;
-  background: rgba(201, 164, 92, .12); color: var(--gold); border: 1px solid rgba(201, 164, 92, .4);
-}
-.booking-success h3 { font-size: 2.2rem; margin-bottom: .8rem; }
-.booking-success p { color: rgba(238, 231, 218, .85); max-width: 42ch; margin: 0 auto 1.6rem; }
-.booking-success p.booking-success__recap { color: var(--gold-light); font-size: .9rem; margin-top: -1rem; }
-.booking-success p.booking-success__recap:empty { display: none; }
 
 /* ---------- Infos pratiques ---------- */
 .info { display: grid; gap: 1.25rem; }
