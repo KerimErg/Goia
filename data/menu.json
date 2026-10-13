@@ -1,0 +1,109 @@
+{
+  "_aide": "Modifiez librement noms, descriptions et prix. 'price' = nombre avec un point (ex. 4.5). 'desc' est optionnel. 'tag' optionnel : 'signature', 'new' ou 'popular'. Vérifiez la syntaxe sur https://jsonlint.com après modification.",
+  "categories": [
+    {
+      "id": "chichas",
+      "name": { "fr": "Chichas", "de": "Shishas" },
+      "groups": [
+        {
+          "name": { "fr": "Classiques", "de": "Klassiker" },
+          "items": [
+            { "name": { "fr": "Double Pomme", "de": "Doppelapfel" }, "desc": { "fr": "L'incontournable, anisé et doux", "de": "Der Klassiker, mild mit Anisnote" }, "price": 16, "tag": "popular" },
+            { "name": { "fr": "Menthe Glaciale", "de": "Eisminze" }, "desc": { "fr": "Fraîcheur intense", "de": "Intensive Frische" }, "price": 16 },
+            { "name": { "fr": "Raisin Menthe", "de": "Traube Minze" }, "price": 16 },
+            { "name": { "fr": "Pastèque Menthe", "de": "Wassermelone Minze" }, "price": 16 },
+            { "name": { "fr": "Pêche", "de": "Pfirsich" }, "price": 16 }
+          ]
+        },
+        {
+          "name": { "fr": "Premium", "de": "Premium" },
+          "items": [
+            { "name": { "fr": "Love 66", "de": "Love 66" }, "desc": { "fr": "Melon, fruit de la passion, menthe", "de": "Melone, Maracuja, Minze" }, "price": 20 },
+            { "name": { "fr": "Lady Killer", "de": "Lady Killer" }, "desc": { "fr": "Mangue, baies, touche fraîche", "de": "Mango, Beeren, frischer Kick" }, "price": 20 },
+            { "name": { "fr": "Blueberry Muffin", "de": "Blueberry Muffin" }, "desc": { "fr": "Myrtille et notes pâtissières", "de": "Heidelbeere mit Gebäcknote" }, "price": 20 },
+            { "name": { "fr": "Tête fruit", "de": "Fruchtkopf" }, "desc": { "fr": "Servie dans un ananas ou un melon (selon saison)", "de": "Im Ananas- oder Melonenkopf (saisonal)" }, "price": 28 }
+          ]
+        },
+        {
+          "name": { "fr": "Créations maison", "de": "Hauskreationen" },
+          "items": [
+            { "name": { "fr": "Goia Gold", "de": "Goia Gold" }, "desc": { "fr": "Mangue, vanille, menthe glaciale — notre signature", "de": "Mango, Vanille, Eisminze — unsere Signatur" }, "price": 24, "tag": "signature" },
+            { "name": { "fr": "Nuit à Kehl", "de": "Kehler Nacht" }, "desc": { "fr": "Fruits rouges, citron vert, menthe", "de": "Rote Beeren, Limette, Minze" }, "price": 24, "tag": "signature" },
+            { "name": { "fr": "Pont du Rhin", "de": "Rheinbrücke" }, "desc": { "fr": "Pêche blanche, thé glacé, fleur d'oranger", "de": "Weißer Pfirsich, Eistee, Orangenblüte" }, "price": 24, "tag": "new" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chaud",
+      "name": { "fr": "Boissons chaudes", "de": "Heißgetränke" },
+      "groups": [
+        {
+          "name": { "fr": "Thés", "de": "Tee" },
+          "items": [
+            { "name": { "fr": "Thé à la menthe (verre)", "de": "Marokkanischer Minztee (Glas)" }, "desc": { "fr": "Menthe fraîche, préparé à la marocaine", "de": "Frische Minze, marokkanisch zubereitet" }, "price": 4 },
+            { "name": { "fr": "Théière menthe (2–3 pers.)", "de": "Kanne Minztee (2–3 Pers.)" }, "price": 9.5, "tag": "popular" },
+            { "name": { "fr": "Thé noir ou vert", "de": "Schwarzer oder grüner Tee" }, "price": 3.5 },
+            { "name": { "fr": "Infusion du moment", "de": "Kräutertee des Hauses" }, "price": 3.5 }
+          ]
+        },
+        {
+          "name": { "fr": "Cafés", "de": "Kaffee" },
+          "items": [
+            { "name": { "fr": "Espresso", "de": "Espresso" }, "price": 2.5 },
+            { "name": { "fr": "Cappuccino", "de": "Cappuccino" }, "price": 3.8 },
+            { "name": { "fr": "Latte Macchiato", "de": "Latte Macchiato" }, "price": 4.2 },
+            { "name": { "fr": "Café turc", "de": "Türkischer Mokka" }, "price": 3.5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frais",
+      "name": { "fr": "Boissons fraîches", "de": "Kaltgetränke" },
+      "groups": [
+        {
+          "name": { "fr": "Softs", "de": "Softdrinks" },
+          "items": [
+            { "name": { "fr": "Coca-Cola / Zero (0,33 l)", "de": "Coca-Cola / Zero (0,33 l)" }, "price": 3.9 },
+            { "name": { "fr": "Fanta / Sprite (0,33 l)", "de": "Fanta / Sprite (0,33 l)" }, "price": 3.9 },
+            { "name": { "fr": "Eau plate ou gazeuse (0,5 l)", "de": "Wasser still oder sprudelnd (0,5 l)" }, "price": 3.5 },
+            { "name": { "fr": "Red Bull (0,25 l)", "de": "Red Bull (0,25 l)" }, "price": 4.5 },
+            { "name": { "fr": "Thé glacé maison", "de": "Hausgemachter Eistee" }, "price": 4.5 }
+          ]
+        },
+        {
+          "name": { "fr": "Mocktails (sans alcool)", "de": "Mocktails (alkoholfrei)" },
+          "items": [
+            { "name": { "fr": "Virgin Mojito", "de": "Virgin Mojito" }, "desc": { "fr": "Citron vert, menthe, sucre de canne, soda", "de": "Limette, Minze, Rohrzucker, Soda" }, "price": 7.5, "tag": "popular" },
+            { "name": { "fr": "Passion Sunset", "de": "Passion Sunset" }, "desc": { "fr": "Fruit de la passion, orange, grenadine", "de": "Maracuja, Orange, Grenadine" }, "price": 7.5 },
+            { "name": { "fr": "Goia Breeze", "de": "Goia Breeze" }, "desc": { "fr": "Mangue, ananas, coco, citron vert", "de": "Mango, Ananas, Kokos, Limette" }, "price": 8, "tag": "signature" },
+            { "name": { "fr": "Berry Fizz", "de": "Berry Fizz" }, "desc": { "fr": "Fruits rouges, basilic, tonic", "de": "Rote Beeren, Basilikum, Tonic" }, "price": 7.5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "snacks",
+      "name": { "fr": "Snacks & desserts", "de": "Snacks & Desserts" },
+      "groups": [
+        {
+          "name": { "fr": "À grignoter", "de": "Zum Knabbern" },
+          "items": [
+            { "name": { "fr": "Nachos fromage", "de": "Nachos mit Käse" }, "desc": { "fr": "Sauce cheddar, jalapeños", "de": "Cheddarsauce, Jalapeños" }, "price": 6.5 },
+            { "name": { "fr": "Assiette de fruits", "de": "Obstteller" }, "desc": { "fr": "Fruits frais de saison, à partager", "de": "Frisches Saisonobst, zum Teilen" }, "price": 12 },
+            { "name": { "fr": "Mix de fruits secs", "de": "Nussmischung" }, "price": 4 }
+          ]
+        },
+        {
+          "name": { "fr": "Desserts", "de": "Desserts" },
+          "items": [
+            { "name": { "fr": "Baklava (3 pièces)", "de": "Baklava (3 Stück)" }, "price": 5.5 },
+            { "name": { "fr": "Fondant au chocolat", "de": "Schokoladen-Fondant" }, "desc": { "fr": "Cœur coulant, boule de glace vanille", "de": "Flüssiger Kern, Vanilleeis" }, "price": 7 },
+            { "name": { "fr": "Coupe de glace (2 boules)", "de": "Eisbecher (2 Kugeln)" }, "price": 5 }
+          ]
+        }
+      ]
+    }
+  ]
+}

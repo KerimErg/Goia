@@ -1,0 +1,232 @@
+/* ==========================================================================
+   LE GOIA — TRADUCTIONS FR / DE
+   --------------------------------------------------------------------------
+   Chaque texte du site existe en deux versions : "fr" et "de".
+   Dans le HTML, un élément avec data-i18n="cle" reçoit le texte
+   correspondant. Pour modifier une phrase, changez-la ici dans les deux
+   langues. Les textes contenant {variables} sont complétés automatiquement.
+   ========================================================================== */
+
+window.GOIA_I18N = {
+  fr: {
+    "meta.title": "Le Goia — Bar à chicha à Kehl, près de Strasbourg",
+    "meta.description":
+      "Le Goia, bar à chicha et lounge à Kehl, à 5 minutes de Strasbourg. Chichas premium, créations maison, mocktails et thé à la menthe. Réservez votre table en ligne.",
+
+    "nav.menu": "Menu",
+    "nav.booking": "Réserver",
+    "nav.info": "Infos",
+    "nav.toggle": "Ouvrir le menu de navigation",
+    "nav.lang": "Changer de langue",
+
+    "age.title": "Bienvenue au Goia",
+    "age.text": "Ce site présente des produits à base de tabac. Avez-vous 18 ans ou plus ?",
+    "age.yes": "Oui, j'ai 18 ans ou plus",
+    "age.no": "Non",
+    "age.denied": "Désolé, l'accès au Goia est réservé aux personnes majeures. À bientôt !",
+
+    "hero.eyebrow": "Shisha lounge · Kehl",
+    "hero.tagline": "Fumée douce, lumière tamisée. À deux pas de Strasbourg.",
+    "hero.ctaMenu": "Voir le menu",
+    "hero.ctaBook": "Réserver",
+    "hero.scroll": "Défiler",
+
+    "menu.eyebrow": "La carte",
+    "menu.title": "Menu",
+    "menu.note": "Prix en euros, TVA incluse. Chichas servies uniquement aux personnes majeures.",
+    "menu.loading": "Chargement du menu…",
+    "menu.error": "Le menu n'a pas pu être chargé. Réessayez dans un instant.",
+    "menu.tag.signature": "Signature",
+    "menu.tag.new": "Nouveau",
+    "menu.tag.popular": "Populaire",
+
+    "booking.eyebrow": "Votre table",
+    "booking.title": "Réserver",
+    "booking.intro": "Envoyez votre demande, nous vous confirmons rapidement par téléphone ou par email.",
+    "booking.name": "Nom",
+    "booking.phone": "Téléphone",
+    "booking.email": "Email",
+    "booking.date": "Date",
+    "booking.time": "Heure",
+    "booking.persons": "Personnes",
+    "booking.message": "Message",
+    "booking.optional": "(optionnel)",
+    "booking.messagePh": "Anniversaire, préférence de place…",
+    "booking.age": "Je confirme avoir 18 ans ou plus.",
+    "booking.privacy":
+      'J\'accepte la <a href="datenschutz.html#fr" target="_blank" rel="noopener">politique de confidentialité</a>.',
+    "booking.submit": "Envoyer la demande",
+    "booking.sending": "Envoi…",
+    "booking.time.pickDate": "Date d'abord",
+    "booking.time.choose": "Choisir une heure",
+    "booking.time.closed": "Fermé ce jour-là",
+    "booking.persons.more": "Plus de {max} personnes ? Appelez-nous.",
+    "booking.success.title": "Merci, {name} !",
+    "booking.success.text":
+      "Votre demande pour le {date} à {time} ({persons} pers.) a bien été envoyée. Elle sera définitive après notre confirmation.",
+    "booking.success.again": "Nouvelle demande",
+    "booking.error.generic":
+      "L'envoi a échoué. Réessayez ou réservez directement par WhatsApp ou téléphone.",
+    "booking.error.config":
+      "La réservation en ligne est momentanément indisponible. Réservez par WhatsApp ou téléphone.",
+    "booking.alt": "Plus rapide :",
+    "booking.whatsapp": "Réserver par WhatsApp",
+    "booking.call": "Appeler",
+
+    "err.name": "Indiquez votre nom.",
+    "err.phone": "Indiquez un numéro de téléphone valide.",
+    "err.email": "Indiquez une adresse email valide.",
+    "err.date": "Choisissez une date.",
+    "err.datePast": "Choisissez une date à venir.",
+    "err.dateClosed": "Nous sommes fermés ce jour-là.",
+    "err.time": "Choisissez une heure.",
+    "err.persons": "Indiquez le nombre de personnes.",
+    "err.age": "La réservation est réservée aux personnes majeures.",
+    "err.privacy": "Merci d'accepter la politique de confidentialité.",
+    "err.summary": "Merci de corriger les champs indiqués.",
+
+    "wa.message": "Bonjour Le Goia, je souhaite réserver une table{details}. Merci !",
+    "wa.details": " pour {persons} personne(s) le {date} à {time}",
+
+    "info.eyebrow": "Nous trouver",
+    "info.title": "Infos pratiques",
+    "info.address": "Adresse",
+    "info.hours": "Horaires",
+    "info.contact": "Contact",
+    "info.follow": "Suivez-nous",
+    "info.openNow": "Ouvert maintenant",
+    "info.closedNow": "Fermé actuellement",
+    "info.closed": "Fermé",
+    "info.directions": "Itinéraire",
+    "info.fromStrasbourg": "À 5 min de Strasbourg, juste après le pont de l'Europe.",
+    "map.title": "Carte Google Maps",
+    "map.consent":
+      "La carte est fournie par Google. En la chargeant, des données (dont votre adresse IP) sont transmises à Google.",
+    "map.load": "Afficher la carte",
+    "map.privacy": "Confidentialité",
+
+    "footer.adult": "Réservé aux personnes majeures (18+)",
+    "footer.impressum": "Mentions légales (Impressum)",
+    "footer.privacy": "Confidentialité",
+    "footer.warning": "Fumer nuit gravement à votre santé et à celle de votre entourage.",
+
+    "day.0": "Dimanche",
+    "day.1": "Lundi",
+    "day.2": "Mardi",
+    "day.3": "Mercredi",
+    "day.4": "Jeudi",
+    "day.5": "Vendredi",
+    "day.6": "Samedi",
+  },
+
+  de: {
+    "meta.title": "Le Goia — Shisha Bar in Kehl, nahe Straßburg",
+    "meta.description":
+      "Le Goia, Shisha Bar & Lounge in Kehl, 5 Minuten von Straßburg. Premium-Shishas, Hauskreationen, Mocktails und Minztee. Jetzt online einen Tisch reservieren.",
+
+    "nav.menu": "Karte",
+    "nav.booking": "Reservieren",
+    "nav.info": "Infos",
+    "nav.toggle": "Navigation öffnen",
+    "nav.lang": "Sprache wechseln",
+
+    "age.title": "Willkommen im Goia",
+    "age.text": "Diese Website zeigt Tabakprodukte. Bist du 18 Jahre oder älter?",
+    "age.yes": "Ja, ich bin 18 oder älter",
+    "age.no": "Nein",
+    "age.denied": "Sorry, der Zutritt ist nur für Volljährige. Bis bald!",
+
+    "hero.eyebrow": "Shisha Lounge · Kehl",
+    "hero.tagline": "Sanfter Rauch, gedämpftes Licht. Direkt an der Grenze zu Straßburg.",
+    "hero.ctaMenu": "Zur Karte",
+    "hero.ctaBook": "Reservieren",
+    "hero.scroll": "Scrollen",
+
+    "menu.eyebrow": "Unsere Karte",
+    "menu.title": "Karte",
+    "menu.note": "Preise in Euro inkl. MwSt. Shishas nur für Personen ab 18 Jahren.",
+    "menu.loading": "Karte wird geladen…",
+    "menu.error": "Die Karte konnte nicht geladen werden. Bitte versuche es gleich noch einmal.",
+    "menu.tag.signature": "Signature",
+    "menu.tag.new": "Neu",
+    "menu.tag.popular": "Beliebt",
+
+    "booking.eyebrow": "Dein Tisch",
+    "booking.title": "Reservieren",
+    "booking.intro": "Sende uns deine Anfrage – wir bestätigen schnell per Telefon oder E-Mail.",
+    "booking.name": "Name",
+    "booking.phone": "Telefon",
+    "booking.email": "E-Mail",
+    "booking.date": "Datum",
+    "booking.time": "Uhrzeit",
+    "booking.persons": "Personen",
+    "booking.message": "Nachricht",
+    "booking.optional": "(optional)",
+    "booking.messagePh": "Geburtstag, Platzwunsch…",
+    "booking.age": "Ich bestätige, dass ich mindestens 18 Jahre alt bin.",
+    "booking.privacy":
+      'Ich akzeptiere die <a href="datenschutz.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.',
+    "booking.submit": "Anfrage senden",
+    "booking.sending": "Wird gesendet…",
+    "booking.time.pickDate": "Erst Datum wählen",
+    "booking.time.choose": "Uhrzeit wählen",
+    "booking.time.closed": "An diesem Tag geschlossen",
+    "booking.persons.more": "Mehr als {max} Personen? Ruf uns an.",
+    "booking.success.title": "Danke, {name}!",
+    "booking.success.text":
+      "Deine Anfrage für den {date} um {time} Uhr ({persons} Pers.) wurde gesendet. Sie ist erst nach unserer Bestätigung verbindlich.",
+    "booking.success.again": "Neue Anfrage",
+    "booking.error.generic":
+      "Senden fehlgeschlagen. Bitte versuche es erneut oder reserviere per WhatsApp oder Telefon.",
+    "booking.error.config":
+      "Die Online-Reservierung ist gerade nicht verfügbar. Bitte reserviere per WhatsApp oder Telefon.",
+    "booking.alt": "Schneller:",
+    "booking.whatsapp": "Per WhatsApp reservieren",
+    "booking.call": "Anrufen",
+
+    "err.name": "Bitte gib deinen Namen ein.",
+    "err.phone": "Bitte gib eine gültige Telefonnummer ein.",
+    "err.email": "Bitte gib eine gültige E-Mail-Adresse ein.",
+    "err.date": "Bitte wähle ein Datum.",
+    "err.datePast": "Bitte wähle ein zukünftiges Datum.",
+    "err.dateClosed": "An diesem Tag haben wir geschlossen.",
+    "err.time": "Bitte wähle eine Uhrzeit.",
+    "err.persons": "Bitte gib die Personenzahl an.",
+    "err.age": "Reservierungen nur für Volljährige.",
+    "err.privacy": "Bitte akzeptiere die Datenschutzerklärung.",
+    "err.summary": "Bitte korrigiere die markierten Felder.",
+
+    "wa.message": "Hallo Le Goia, ich möchte gerne einen Tisch reservieren{details}. Danke!",
+    "wa.details": " für {persons} Person(en) am {date} um {time} Uhr",
+
+    "info.eyebrow": "So findest du uns",
+    "info.title": "Infos",
+    "info.address": "Adresse",
+    "info.hours": "Öffnungszeiten",
+    "info.contact": "Kontakt",
+    "info.follow": "Folge uns",
+    "info.openNow": "Jetzt geöffnet",
+    "info.closedNow": "Derzeit geschlossen",
+    "info.closed": "Geschlossen",
+    "info.directions": "Route",
+    "info.fromStrasbourg": "5 Minuten von Straßburg, direkt hinter der Europabrücke.",
+    "map.title": "Google-Maps-Karte",
+    "map.consent":
+      "Die Karte wird von Google bereitgestellt. Beim Laden werden Daten (u. a. deine IP-Adresse) an Google übertragen.",
+    "map.load": "Karte anzeigen",
+    "map.privacy": "Datenschutz",
+
+    "footer.adult": "Nur für Volljährige (18+)",
+    "footer.impressum": "Impressum",
+    "footer.privacy": "Datenschutz",
+    "footer.warning": "Rauchen fügt Ihnen und den Menschen in Ihrer Umgebung erheblichen Schaden zu.",
+
+    "day.0": "Sonntag",
+    "day.1": "Montag",
+    "day.2": "Dienstag",
+    "day.3": "Mittwoch",
+    "day.4": "Donnerstag",
+    "day.5": "Freitag",
+    "day.6": "Samstag",
+  },
+};
