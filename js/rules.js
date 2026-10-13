@@ -53,28 +53,52 @@
   }
 
   /**
-   * Créneaux réservables pour une date ("HH:MM"), dans l'ordre de la soirée.
-   * Les créneaux déjà passés aujourd'hui sont exclus.
+   * Tous les créneaux d'une date, en minutes depuis minuit de cette date
+   * (un créneau après minuit vaut plus de 1440 : il appartient à la même soirée).
    */
-  function slotsFor(config, ymd, now) {
-    now = now || nowInKehl();
-    if (!isYmd(ymd) || ymd < now.ymd) return [];
-    if (ymd > addDays(now.ymd, config.reservation.maxDaysAhead)) return [];
+  function daySlotMinutes(config, ymd) {
+    if (!isYmd(ymd)) return [];
     const range = dayRange(config, weekdayOf(ymd));
     if (!range) return [];
     const { slotMinutes, lastSlotBeforeClose } = config.reservation;
-    const slots = [];
-    for (let m = range.open; m <= range.close - lastSlotBeforeClose; m += slotMinutes) {
-      if (ymd === now.ymd && m <= now.minutes) continue;
-      slots.push(fromMinutes(m));
-    }
-    return slots;
+    const out = [];
+    for (let m = range.open; m <= range.close - lastSlotBeforeClose; m += slotMinutes) out.push(m);
+    return out;
+  }
+
+  /** Tous les créneaux d'une date ("HH:MM"), y compris ceux déjà passés. */
+  const daySlots = (config, ymd) => daySlotMinutes(config, ymd).map(fromMinutes);
+
+  /** Date réservable : pas dans le passé ni au-delà de maxDaysAhead jours. */
+  function inBookingWindow(config, ymd, now) {
+    now = now || nowInKehl();
+    return isYmd(ymd) && ymd >= now.ymd && ymd <= addDays(now.ymd, config.reservation.maxDaysAhead);
+  }
+
+  /** Un créneau est-il encore réservable maintenant ? (délai minimum : minLeadMinutes) */
+  function isSlotOpen(config, ymd, minutes, now) {
+    now = now || nowInKehl();
+    if (!inBookingWindow(config, ymd, now)) return false;
+    if (ymd > now.ymd) return true;
+    return minutes >= now.minutes + (config.reservation.minLeadMinutes || 0);
+  }
+
+  /**
+   * Créneaux encore réservables pour une date ("HH:MM"), dans l'ordre de la soirée
+   * (sans tenir compte des places : voir /api/disponibilites).
+   */
+  function slotsFor(config, ymd, now) {
+    now = now || nowInKehl();
+    return daySlotMinutes(config, ymd).filter((m) => isSlotOpen(config, ymd, m, now)).map(fromMinutes);
   }
 
   /** Ordre « soirée » : 00:30 vient après 23:30 (utile pour trier). */
   const eveningOrder = (hhmm) => { const m = toMinutes(hhmm); return m < 12 * 60 ? m + 1440 : m; };
 
-  const api = { TZ, pad, toMinutes, fromMinutes, weekdayOf, addDays, isYmd, nowInKehl, dayRange, slotsFor, eveningOrder };
+  const api = {
+    TZ, pad, toMinutes, fromMinutes, weekdayOf, addDays, isYmd, nowInKehl, dayRange,
+    daySlotMinutes, daySlots, inBookingWindow, isSlotOpen, slotsFor, eveningOrder,
+  };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.GOIA_RULES = api;

@@ -186,51 +186,107 @@
         <header class="section__head reveal">
           <p class="eyebrow" data-i18n="booking.eyebrow">Votre table</p>
           <h2 id="booking-title" class="section__title" data-i18n="booking.title">Réserver</h2>
-          <p class="section__intro" data-i18n="booking.intro">Choisissez votre soirée : la confirmation est immédiate.</p>
+          <p class="section__intro" data-i18n="booking.intro">Choisissez votre soirée : votre table est confirmée immédiatement.</p>
         </header>
 
-        <!-- Panneau de réservation : date (calendrier), horaire, personnes → étapes sur /reservation/ -->
-        <form class="bpanel reveal" id="booking-panel" action="reservation/" novalidate>
-          <p class="bpanel__title" data-i18n="panel.title">Réservez votre table</p>
-          <div class="bpanel__grid">
-            <div class="bfield-wrap">
-              <button type="button" class="bfield" id="bp-date">
-                <svg class="bfield__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                <span class="bfield__text">
-                  <span class="bfield__label" data-i18n="panel.date">Date</span>
-                  <span class="bfield__value" id="bp-date-value" data-i18n="panel.datePh">Choisir une date</span>
-                </span>
-              </button>
+        <!-- Réservation en direct : personnes → jour → créneau → coordonnées (js/booking.js) -->
+        <div class="book reveal" id="book">
+          <div class="book__flow" id="book-flow">
+            <div class="book__col">
+              <!-- 1. Personnes -->
+              <div class="book__step">
+                <h3 class="book__label"><span class="book__num">1</span><span data-i18n="bk.step.persons">Combien êtes-vous ?</span></h3>
+                <div class="pchips" id="bk-persons" role="radiogroup" data-i18n-aria-label="bk.step.persons"></div>
+                <p class="book__hint" id="bk-persons-more"></p>
+              </div>
+
+              <!-- 2. Jour -->
+              <div class="book__step">
+                <h3 class="book__label"><span class="book__num">2</span><span data-i18n="bk.step.date">Choisissez une date</span></h3>
+                <div class="bcal" id="bk-cal"></div>
+                <ul class="bcal__legend" aria-hidden="true">
+                  <li><span class="dot dot--available"></span><span data-i18n="bk.legend.available">Disponible</span></li>
+                  <li><span class="dot dot--full"></span><span data-i18n="bk.legend.full">Complet</span></li>
+                  <li><span class="dot dot--closed"></span><span data-i18n="bk.legend.closed">Fermé</span></li>
+                </ul>
+              </div>
             </div>
-            <label class="bfield">
-              <svg class="bfield__icon" aria-hidden="true"><use href="#i-clock"/></svg>
-              <span class="bfield__text">
-                <span class="bfield__label" data-i18n="panel.time">Heure</span>
-                <select id="bp-time" class="bfield__select" disabled>
-                  <option value="">—</option>
-                </select>
-              </span>
-            </label>
-            <div class="bfield bfield--persons">
-              <svg class="bfield__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M16 5.2a3 3 0 0 1 0 5.6M17.5 14.3c1.7.6 2.7 2.2 3 4.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              <span class="bfield__text">
-                <span class="bfield__label" data-i18n="panel.persons">Personnes</span>
-                <span class="bfield__value" id="bp-persons-value" aria-live="polite">2</span>
-              </span>
-              <span class="stepper">
-                <button type="button" class="stepper__btn" id="bp-less" data-i18n-aria-label="panel.less" aria-label="Une personne de moins">−</button>
-                <button type="button" class="stepper__btn" id="bp-more" data-i18n-aria-label="panel.more" aria-label="Une personne de plus">+</button>
-              </span>
+
+            <div class="book__col">
+              <!-- 3. Créneau -->
+              <div class="book__step" id="step-slots">
+                <h3 class="book__label">
+                  <span class="book__num">3</span><span data-i18n="bk.step.time">Choisissez l'horaire</span>
+                  <span class="book__live"><span class="live-dot"></span><span data-i18n="bk.live">En temps réel</span></span>
+                </h3>
+                <p class="book__day" id="bk-day-label"></p>
+                <p class="book__taken" id="bk-taken" role="alert" hidden></p>
+                <div class="slots" id="bk-slots"></div>
+                <p class="book__info" id="bk-slots-info" aria-live="polite"></p>
+                <button type="button" class="btn btn--ghost btn--small" id="bk-reload" hidden data-i18n="bk.retry">Réessayer</button>
+              </div>
+
+              <!-- 4. Coordonnées -->
+              <form class="book__step book__form" id="step-form" novalidate hidden>
+                <h3 class="book__label"><span class="book__num">4</span><span data-i18n="bk.step.details">Vos coordonnées</span></h3>
+                <div class="book__summary">
+                  <span id="bk-summary-text"></span>
+                  <button type="button" class="book__change" id="bk-change" data-i18n="bk.change">Modifier</button>
+                </div>
+                <div class="form-alert" id="bk-alert" role="alert" hidden></div>
+                <!-- Anti-spam : champ invisible, doit rester vide -->
+                <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+                <div class="field">
+                  <label for="bk-name" data-i18n="booking.name">Nom</label>
+                  <input id="bk-name" type="text" autocomplete="name" maxlength="80" required>
+                  <p class="field__error" id="bk-name-err"></p>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="bk-phone" data-i18n="booking.phone">Téléphone</label>
+                    <input id="bk-phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="25" placeholder="+33 / +49 …" required>
+                    <p class="field__error" id="bk-phone-err"></p>
+                  </div>
+                  <div class="field">
+                    <label for="bk-email" data-i18n="booking.email">Email</label>
+                    <input id="bk-email" type="email" autocomplete="email" inputmode="email" maxlength="120" required>
+                    <p class="field__error" id="bk-email-err"></p>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="bk-message"><span data-i18n="booking.message">Message</span> <span class="muted" data-i18n="booking.optional">(optionnel)</span></label>
+                  <textarea id="bk-message" rows="2" maxlength="500" data-i18n-placeholder="booking.messagePh"></textarea>
+                </div>
+                <div class="field field--check">
+                  <input id="bk-age" type="checkbox" required>
+                  <label for="bk-age" data-i18n="booking.age">Je confirme avoir 18 ans ou plus.</label>
+                  <p class="field__error" id="bk-age-err"></p>
+                </div>
+                <div class="field field--check">
+                  <input id="bk-privacy" type="checkbox" required>
+                  <label for="bk-privacy" data-i18n-html="booking.privacy">J'accepte la <a href="datenschutz.html#fr" target="_blank" rel="noopener">politique de confidentialité</a>.</label>
+                  <p class="field__error" id="bk-privacy-err"></p>
+                </div>
+                <button type="submit" class="btn btn--gold btn--block btn--lg" id="bk-submit">
+                  <span id="bk-submit-label" data-i18n="bk.submit">Confirmer la réservation</span>
+                </button>
+              </form>
             </div>
-            <button type="submit" class="btn btn--gold bpanel__submit">
-              <span data-i18n="panel.submit">Continuer</span>
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
           </div>
-          <p class="bpanel__error" id="bp-error" role="alert" hidden></p>
-          <div class="slot-alternatives" id="bp-alternatives" hidden></div>
-          <p class="bpanel__note" id="bp-note"></p>
-        </form>
+
+          <!-- Confirmation à l'écran -->
+          <div class="book__done" id="bk-done" hidden tabindex="-1">
+            <span class="conf__check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3 class="book__done-title" id="bk-done-title"></h3>
+            <p class="book__done-text" id="bk-done-text"></p>
+            <p class="book__done-ref"><span data-i18n="bk.done.ref">Référence</span> <strong id="bk-done-ref"></strong></p>
+            <p class="book__hint" data-i18n="bk.done.id">Pièce d'identité demandée à l'entrée (18+).</p>
+            <div class="book__done-actions">
+              <a class="btn btn--ghost" id="bk-done-manage" href="#" data-i18n="bk.done.manage">Gérer ma réservation</a>
+              <button type="button" class="btn btn--gold" id="bk-done-again" data-i18n="bk.done.again">Nouvelle réservation</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Alternative : réservation par téléphone -->
         <div class="quick-book reveal">
@@ -318,7 +374,8 @@
   <script src="js/config.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/i18n.js"></script>
-  <script src="js/calendar.js"></script>
+  <script src="js/lang.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/booking.js"></script>
 </body>
 </html>

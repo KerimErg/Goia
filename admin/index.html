@@ -39,38 +39,108 @@
       </form>
     </section>
 
-    <!-- ============ Tableau de bord + réservations ============ -->
-    <section id="list-view" hidden>
-      <div class="page-head">
-        <h1>Réservations</h1>
-        <p class="muted" id="updated-at"></p>
+    <!-- ============ Vue par jour ============ -->
+    <section id="day-view" hidden>
+      <div class="daynav">
+        <button type="button" class="icon-btn" id="day-prev" aria-label="Jour précédent">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="daynav__center">
+          <h1 class="daynav__title" id="day-title"></h1>
+          <p class="daynav__sub" id="day-sub"></p>
+        </div>
+        <button type="button" class="icon-btn" id="day-next" aria-label="Jour suivant">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="daynav__tools">
+        <button type="button" class="chip" id="day-today">Ce soir</button>
+        <label class="filters__date"><span class="sr-only">Choisir une date</span><input type="date" id="day-picker"></label>
       </div>
 
       <div class="kpis" id="kpis"></div>
 
-      <div class="filters">
-        <div class="filters__chips" role="group" aria-label="Période">
-          <button type="button" class="chip" data-range="today" aria-pressed="false">Ce soir</button>
-          <button type="button" class="chip" data-range="tomorrow" aria-pressed="false">Demain</button>
-          <button type="button" class="chip" data-range="upcoming" aria-pressed="true">À venir</button>
-        </div>
-        <div class="filters__row">
-          <label class="filters__date">
-            <span>Date</span>
-            <input type="date" id="filter-date">
-          </label>
-          <label class="search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <input type="search" id="search" placeholder="Référence, nom, e-mail, téléphone…" aria-label="Rechercher">
-          </label>
-        </div>
-        <div class="status-tabs" id="status-tabs" role="group" aria-label="Statut"></div>
+      <div class="admin-actions">
+        <button type="button" class="btn btn--gold" id="open-add">+ Ajouter une réservation</button>
+        <button type="button" class="btn btn--ghost" id="open-block">Bloquer</button>
+        <button type="button" class="btn btn--ghost" id="open-settings">Capacité : <span id="capacity-label">—</span></button>
       </div>
 
+      <div id="blocks"></div>
+
+      <details class="occupancy" id="occupancy" open>
+        <summary>Personnes par créneau</summary>
+        <p class="occupancy__help">Une réservation compte pendant 2 h sur chaque créneau qu'elle chevauche.</p>
+        <div class="occupancy__rows" id="occupancy-rows"></div>
+      </details>
+
+      <h2 class="list-title">Réservations</h2>
       <p class="admin-status" id="list-status" role="status"></p>
-      <div id="days"></div>
+      <div id="list"></div>
     </section>
   </main>
+
+  <!-- Ajout manuel (réservation par téléphone) -->
+  <dialog class="dlg dlg--form" id="add-dialog" aria-labelledby="add-title">
+    <form id="add-form" novalidate>
+      <h2 class="dlg__title" id="add-title">Ajouter une réservation</h2>
+      <p class="dlg__text" id="add-day"></p>
+      <div class="field-row">
+        <div class="field"><label for="add-time">Heure</label><select id="add-time" class="admin-select" required></select></div>
+        <div class="field"><label for="add-persons">Personnes</label><input id="add-persons" type="number" min="1" max="50" value="2" inputmode="numeric" required></div>
+      </div>
+      <div class="field"><label for="add-name">Nom</label><input id="add-name" type="text" maxlength="80" required></div>
+      <div class="field"><label for="add-phone">Téléphone</label><input id="add-phone" type="tel" maxlength="25" required></div>
+      <div class="field"><label for="add-email">Email <span class="muted">(facultatif)</span></label><input id="add-email" type="email" maxlength="120"></div>
+      <div class="field"><label for="add-message">Note <span class="muted">(facultatif)</span></label><input id="add-message" type="text" maxlength="500"></div>
+      <div class="field-row">
+        <div class="field"><label for="add-lang">Langue des emails</label><select id="add-lang" class="admin-select"><option value="fr">Français</option><option value="de">Deutsch</option></select></div>
+        <label class="toggle toggle--field"><input type="checkbox" id="add-send"> <span>Envoyer l'email de confirmation</span></label>
+      </div>
+      <p class="form-alert" id="add-error" role="alert" hidden></p>
+      <div class="dlg__actions">
+        <button type="button" class="btn btn--text" data-close>Annuler</button>
+        <button type="submit" class="btn btn--gold" id="add-submit">Ajouter</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Blocage d'une journée ou d'une plage -->
+  <dialog class="dlg dlg--form" id="block-dialog" aria-labelledby="block-title">
+    <form id="block-form" novalidate>
+      <h2 class="dlg__title" id="block-title">Bloquer</h2>
+      <p class="dlg__text" id="block-day"></p>
+      <div class="radio-row">
+        <label class="toggle"><input type="radio" name="block-type" value="day" checked> <span>Journée entière</span></label>
+        <label class="toggle"><input type="radio" name="block-type" value="range"> <span>Plage horaire</span></label>
+      </div>
+      <div class="field-row" id="block-range" hidden>
+        <div class="field"><label for="block-from">À partir de</label><select id="block-from" class="admin-select"></select></div>
+        <div class="field"><label for="block-to">Jusqu'à</label><select id="block-to" class="admin-select"></select></div>
+      </div>
+      <div class="field"><label for="block-motif">Motif <span class="muted">(visible seulement ici)</span></label><input id="block-motif" type="text" maxlength="120" placeholder="Soirée privée, fermeture exceptionnelle…"></div>
+      <p class="dlg__text">Les réservations déjà prises sur cette période ne sont pas annulées automatiquement.</p>
+      <p class="form-alert" id="block-error" role="alert" hidden></p>
+      <div class="dlg__actions">
+        <button type="button" class="btn btn--text" data-close>Annuler</button>
+        <button type="submit" class="btn btn--gold">Bloquer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Capacité -->
+  <dialog class="dlg dlg--form" id="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form" novalidate>
+      <h2 class="dlg__title" id="settings-title">Capacité par créneau</h2>
+      <p class="dlg__text">Nombre maximum de personnes présentes en même temps. S'applique immédiatement aux réservations en ligne.</p>
+      <div class="field"><label for="settings-capacity">Personnes</label><input id="settings-capacity" type="number" min="1" max="500" inputmode="numeric" required></div>
+      <p class="form-alert" id="settings-error" role="alert" hidden></p>
+      <div class="dlg__actions">
+        <button type="button" class="btn btn--text" data-close>Annuler</button>
+        <button type="submit" class="btn btn--gold">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 

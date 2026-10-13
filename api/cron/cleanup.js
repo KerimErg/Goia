@@ -31,6 +31,7 @@ module.exports = async function handler(req, res) {
   try {
     const deleted = await db.remove(`reservations?date=lt.${cutoffDate}&select=id`);
     const events = await db.remove(`rate_events?created_at=lt.${encodeURIComponent(eventsCutoff)}&select=id`);
+    await db.remove(`blocages?date=lt.${cutoffDate}&select=id`);
     console.log(`[cleanup] ${deleted.length} réservation(s) avant le ${cutoffDate} supprimée(s)`);
     return send(res, 200, { ok: true, cutoff: cutoffDate, reservationsDeleted: deleted.length, rateEventsDeleted: events.length });
   } catch (err) {

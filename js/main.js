@@ -8,7 +8,7 @@
      4. Navigation
      5. Menu (chargé depuis data/menu.json)
      6. Horaires & statut « ouvert maintenant »
-     7. Panneau de réservation (date, horaire, personnes)
+     7. (réservation : voir js/booking.js)
      8. WhatsApp, téléphone, réseaux (depuis js/config.js)
      9. Carte Google Maps (chargée après clic)
     10. Animations d'apparition
@@ -20,15 +20,13 @@
   "use strict";
 
   const CONFIG = window.GOIA_CONFIG;
-  const I18N = window.GOIA_I18N;
   const RULES = window.GOIA_RULES; // règles horaires partagées avec le serveur (js/rules.js)
-  const LANGS = ["fr", "de"];
-  const API_AVAILABILITY = "/api/availability";
+  const L = window.GOIA_LANG;      // langue FR / DE partagée avec les autres pages (js/lang.js)
+  const t = L.t;
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  let lang = "fr";
   let menuData = null;
   let activeCategory = null;
 
@@ -36,65 +34,28 @@
      1. Utilitaires
      ====================================================================== */
 
-  /** Renvoie le texte traduit et remplace les {variables}. */
-  function t(key, vars) {
-    let str = (I18N[lang] && I18N[lang][key]) ?? I18N.fr[key] ?? key;
-    if (vars) str = str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ""));
-    return str;
-  }
-
   /** localStorage peut être bloqué (navigation privée) : on protège tout. */
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignoré */ } },
   };
 
-  const locale = () => (lang === "de" ? "de-DE" : "fr-FR");
-  const { nowInKehl, weekdayOf, addDays } = RULES;
+  const locale = L.locale;
+  const { nowInKehl } = RULES;
   const dayRange = (dayIndex) => RULES.dayRange(CONFIG, dayIndex);
 
   /* ======================================================================
-     2. Langue FR / DE
+     2. Langue FR / DE (textes dans js/i18n.js, logique dans js/lang.js)
      ====================================================================== */
 
-  function detectLang() {
-    const fromUrl = new URLSearchParams(location.search).get("lang");
-    if (LANGS.includes(fromUrl)) return fromUrl;
-    const saved = store.get("goia_lang");
-    if (LANGS.includes(saved)) return saved;
-    const browser = (navigator.languages || [navigator.language || ""])
-      .map((l) => l.slice(0, 2).toLowerCase())
-      .find((l) => LANGS.includes(l));
-    return browser || "fr";
-  }
-
-  function setLang(newLang, save) {
-    lang = LANGS.includes(newLang) ? newLang : "fr";
-    if (save) store.set("goia_lang", lang);
-
-    document.documentElement.lang = lang;
+  /** Met à jour ce qui est propre à cette page quand la langue change. */
+  function onLangChange() {
     document.title = t("meta.title");
     const desc = $('meta[name="description"]');
     if (desc) desc.setAttribute("content", t("meta.description"));
-
-    $$("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
-    $$("[data-i18n-html]").forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
-    $$("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
-    $$("[data-i18n-aria-label]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel)); });
-    $$(".lang-switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
-
-    // Contenus générés dynamiquement
     renderMenu();
     renderHours();
-    renderPanel();
-    if (calendar) calendar.render();
     updateWhatsAppLinks();
-  }
-
-  function initLang() {
-    $$(".lang-switch button").forEach((btn) =>
-      btn.addEventListener("click", () => setLang(btn.dataset.lang, true))
-    );
   }
 
   /* ======================================================================
@@ -180,7 +141,7 @@
     }
   }
 
-  const localized = (obj) => (obj == null ? "" : typeof obj === "string" ? obj : obj[lang] || obj.fr || "");
+  const localized = (obj) => (obj == null ? "" : typeof obj === "string" ? obj : obj[L.lang] || obj.fr || "");
 
   function renderMenu() {
     if (!menuData) return;
@@ -343,143 +304,6 @@
   }
 
   /* ======================================================================
-     7. Panneau de réservation (date, horaire, personnes)
-     ====================================================================== */
-
-  /* Panneau de réservation (même rôle que le panneau de recherche du site de
-     location) : date au calendrier, horaire, personnes → étapes sur /reservation/ */
-  const panel = $("#booking-panel");
-  const bp = { date: "", time: "", persons: 2 };
-  let slotAvailability = {};   // places restantes par créneau pour la date choisie
-  let availabilityRequest = 0;
-  let panelErrorKey = "";
-  let calendar = null;
-
-  const formatDateShort = (ymd) => {
-    const [y, m, d] = ymd.split("-").map(Number);
-    return new Intl.DateTimeFormat(locale(), { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" })
-      .format(new Date(Date.UTC(y, m - 1, d)));
-  };
-
-  /** Texte sous le calendrier : jours de fermeture + réservation jusqu'à N jours. */
-  function calendarFooter() {
-    const closed = [1, 2, 3, 4, 5, 6, 0].filter((d) => !CONFIG.hours[d]).map((d) => t(`day.${d}`).toLowerCase());
-    const range = t("cal.range", { n: CONFIG.reservation.maxDaysAhead });
-    return closed.length ? `${t("cal.closed", { days: closed.join(", ") })} · ${range}` : range;
-  }
-
-  function showPanelError(key) {
-    panelErrorKey = key;
-    const box = $("#bp-error");
-    box.textContent = key ? t(key) : "";
-    box.hidden = !key;
-  }
-
-  function renderPanel() {
-    $("#bp-date-value").textContent = bp.date ? formatDateShort(bp.date) : t("panel.datePh");
-    $("#bp-date").classList.toggle("is-empty", !bp.date);
-
-    // Horaires du jour choisi ; un créneau sans assez de places est grisé « complet »
-    const select = $("#bp-time");
-    select.innerHTML = "";
-    const add = (value, text, disabled) => {
-      const o = document.createElement("option");
-      o.value = value; o.textContent = text; o.disabled = !!disabled;
-      select.appendChild(o);
-    };
-    const slots = bp.date ? RULES.slotsFor(CONFIG, bp.date) : [];
-    const isFull = (s) => slotAvailability[s] !== undefined && slotAvailability[s] < bp.persons;
-    if (!slots.length) {
-      add("", bp.date ? t("booking.time.none") : "—");
-      select.disabled = true;
-    } else {
-      add("", t("booking.time.choose"));
-      slots.forEach((s) => add(s, isFull(s) ? `${s} — ${t("booking.time.full")}` : s, isFull(s)));
-      select.disabled = false;
-    }
-    if (!slots.includes(bp.time) || isFull(bp.time)) bp.time = "";
-    select.value = bp.time;
-
-    const max = CONFIG.reservation.maxPersons;
-    $("#bp-persons-value").textContent = String(bp.persons);
-    $("#bp-less").disabled = bp.persons <= 1;
-    $("#bp-more").disabled = bp.persons >= max;
-    $("#bp-note").textContent = bp.persons >= max
-      ? t("booking.persons.more", { max })
-      : t("panel.note", { h: CONFIG.reservation.cancelHoursBefore });
-
-    // Tous les créneaux du jour sont complets pour ce groupe
-    const allFull = slots.length && slots.every(isFull);
-    if (allFull) showPanelError("booking.fullNoAlt");
-    else if (panelErrorKey === "booking.fullNoAlt") showPanelError("");
-    else if (panelErrorKey) showPanelError(panelErrorKey);
-  }
-
-  /** Demande au serveur les places restantes pour la date choisie. */
-  async function loadAvailability() {
-    const date = bp.date;
-    const requestId = ++availabilityRequest;
-    slotAvailability = {};
-    if (!date) return;
-    try {
-      const res = await fetch(`${API_AVAILABILITY}?date=${encodeURIComponent(date)}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (requestId !== availabilityRequest) return; // une autre date a été choisie entre-temps
-      json.slots.forEach((s) => { slotAvailability[s.time] = s.remaining; });
-      renderPanel();
-    } catch (e) {
-      // Serveur injoignable : tous les créneaux restent proposés, le serveur revérifiera.
-    }
-  }
-
-  function initBookingPanel() {
-    const now = nowInKehl();
-    const max = CONFIG.reservation.maxPersons;
-
-    // Retour depuis /reservation/ (« Modifier la date et l'heure ») : on reprend les choix
-    const params = new URLSearchParams(location.search);
-    if (RULES.slotsFor(CONFIG, params.get("date") || "").length) bp.date = params.get("date");
-    if (params.get("time")) bp.time = params.get("time");
-    const p = Number.parseInt(params.get("persons"), 10);
-    if (p >= 1 && p <= max) bp.persons = p;
-
-    calendar = window.GoiaCalendar.create({
-      anchor: $("#bp-date"),
-      getValue: () => bp.date,
-      onSelect: (ymd) => {
-        bp.date = ymd;
-        bp.time = "";
-        showPanelError("");
-        renderPanel();
-        loadAvailability();
-      },
-      isDisabled: (ymd) => !RULES.slotsFor(CONFIG, ymd).length,
-      min: now.ymd,
-      max: addDays(now.ymd, CONFIG.reservation.maxDaysAhead),
-      locale,
-      t,
-      footer: calendarFooter,
-    });
-
-    $("#bp-time").addEventListener("change", (e) => { bp.time = e.target.value; showPanelError(""); });
-    const setPersons = (n) => { bp.persons = Math.min(Math.max(n, 1), max); renderPanel(); };
-    $("#bp-less").addEventListener("click", () => setPersons(bp.persons - 1));
-    $("#bp-more").addEventListener("click", () => setPersons(bp.persons + 1));
-
-    panel.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!bp.date) { showPanelError("panel.errDate"); $("#bp-date").focus(); return; }
-      if (!bp.time) { showPanelError("panel.errTime"); $("#bp-time").focus(); return; }
-      const query = new URLSearchParams({ date: bp.date, time: bp.time, persons: String(bp.persons), lang });
-      location.href = `reservation/?${query}`;
-    });
-
-    renderPanel();
-    if (bp.date) loadAvailability();
-  }
-
-  /* ======================================================================
      8. Coordonnées, WhatsApp et réseaux (depuis config.js)
      ====================================================================== */
 
@@ -551,11 +375,11 @@
 
   applyConfig();
   initNav();
-  initLang();
-  initBookingPanel();
+  L.init();
+  L.onChange(onLangChange);
   initMap();
   initReveal();
-  setLang(detectLang(), false);
+  onLangChange();
   initAgeGate();
   loadMenu();
 })();

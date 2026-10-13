@@ -1,9 +1,9 @@
 /* ==========================================================================
-   LE GOIA — Panneau admin des réservations
+   LE GOIA — Panneau admin : vue par jour
    --------------------------------------------------------------------------
-   Même organisation que l'admin du site de location : indicateurs, filtres
-   par statut avec compteurs, recherche, menu de statut sur chaque réservation.
-   Adapté au bar : regroupement par soirée avec compteur de personnes.
+   Réservations de la soirée triées par heure, personnes par créneau,
+   annulation (email automatique au client), ajout manuel (téléphone),
+   blocage d'une journée ou d'une plage, réglage de la capacité.
    Connexion par mot de passe (vérifié par le serveur, jamais stocké ici).
    ========================================================================== */
 
@@ -18,14 +18,12 @@
   const STATUS_LABEL = {
     en_attente: "En attente", confirmee: "Confirmée", en_cours: "En cours", terminee: "Terminée", annulee: "Annulée",
   };
-  const ACTIVE = ["en_attente", "confirmee", "en_cours"];
-  const AUTO_REFRESH_MS = 2 * 60 * 1000;
+  const AUTO_REFRESH_MS = 60 * 1000;
 
-  let range = "upcoming";      // "today" | "tomorrow" | "upcoming" | "date"
-  let statusFilter = "";       // "" = toutes
-  let search = "";
+  let date = "";        // soirée affichée
   let data = null;
   let loading = false;
+  let reloadQueued = false;
 
   /* ---------- Utilitaires ---------- */
 
@@ -35,20 +33,14 @@
     return now.minutes < 6 * 60 ? RULES.addDays(now.ymd, -1) : now.ymd;
   }
 
-  function formatDay(ymd) {
+  const fmtDay = (ymd) => {
     const [y, m, d] = ymd.split("-").map(Number);
-    const label = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
+    return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
       .format(new Date(Date.UTC(y, m - 1, d)));
-    if (ymd === tonight()) return `Ce soir · ${label}`;
-    if (ymd === RULES.addDays(tonight(), 1)) return `Demain · ${label}`;
-    return label;
-  }
-
-  const formatCreated = (iso) => new Intl.DateTimeFormat("fr-FR", {
+  };
+  const fmtCreated = (iso) => new Intl.DateTimeFormat("fr-FR", {
     day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: RULES.TZ,
   }).format(new Date(iso));
-  const eur = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
-  const zoneName = (id) => { const z = (CONFIG.zones || []).find((x) => x.id === id); return z ? z.name.fr : ""; };
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -74,14 +66,15 @@
       showLogin();
       throw Object.assign(new Error("unauthorized"), { silent: true });
     }
-    if (!res.ok) throw Object.assign(new Error(json.error || String(res.status)), { status: res.status });
+    if (!res.ok) throw Object.assign(new Error(json.error || String(res.status)), { status: res.status, body: json });
     return json;
   }
+  const postJson = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
   /* ---------- Vues ---------- */
 
   function showLogin(message) {
-    $("#list-view").hidden = true;
+    $("#day-view").hidden = true;
     $("#bar-actions").hidden = true;
     $("#login-view").hidden = false;
     const err = $("#login-error");
@@ -90,39 +83,26 @@
     setTimeout(() => $("#password").focus(), 30);
   }
 
-  function showList() {
+  function showDay() {
     $("#login-view").hidden = true;
-    $("#list-view").hidden = false;
+    $("#day-view").hidden = false;
     $("#bar-actions").hidden = false;
   }
 
   /* ---------- Chargement ---------- */
 
-  function query() {
-    const p = new URLSearchParams();
-    if (range === "today") { p.set("from", tonight()); p.set("to", tonight()); }
-    if (range === "tomorrow") { const d = RULES.addDays(tonight(), 1); p.set("from", d); p.set("to", d); }
-    if (range === "date" && $("#filter-date").value) { p.set("from", $("#filter-date").value); p.set("to", $("#filter-date").value); }
-    if (statusFilter) p.set("statut", statusFilter);
-    if (search) p.set("q", search);
-    const s = p.toString();
-    return s ? `?${s}` : "";
-  }
-
-  let reloadQueued = false;
   async function load() {
-    // Un filtre changé pendant un chargement relance un chargement juste après
     if (loading) { reloadQueued = true; return; }
     loading = true;
     $("#refresh").classList.add("is-spinning");
-    if (!data) $("#list-status").textContent = "Chargement…";
     try {
-      data = await api(`/api/admin/reservations${query()}`);
-      showList();
+      data = await api(`/api/admin/reservations?date=${encodeURIComponent(date || tonight())}`);
+      date = data.date;
+      showDay();
       render();
     } catch (err) {
       if (!err.silent) {
-        $("#list-status").textContent = "Impossible de charger les réservations. Vérifiez la connexion puis réessayez.";
+        $("#list-status").textContent = "Impossible de charger la journée. Vérifiez la connexion puis réessayez.";
         console.error(err);
       }
     } finally {
@@ -132,67 +112,97 @@
     }
   }
 
+  function goTo(ymd) {
+    date = ymd;
+    data = null;
+    $("#list").innerHTML = "";
+    $("#list-status").textContent = "Chargement…";
+    load();
+  }
+
   /* ---------- Affichage ---------- */
 
-  function renderKpis() {
-    const s = data.stats;
+  function render() {
+    // En-tête du jour
+    $("#day-title").textContent = fmtDay(date);
+    const rel = date === data.tonight ? "Ce soir" : date === RULES.addDays(data.tonight, 1) ? "Demain"
+      : date === RULES.addDays(data.tonight, -1) ? "Hier" : "";
+    const hours = CONFIG.hours[RULES.weekdayOf(date)];
+    $("#day-sub").textContent = [rel, data.open && hours ? `Ouvert ${hours.open} – ${hours.close}` : "Fermé (horaires habituels)"]
+      .filter(Boolean).join(" · ");
+    $("#day-picker").value = date;
+    $("#capacity-label").textContent = String(data.capacity);
+
+    // Indicateurs
     const kpis = [
-      ["Ce soir", String(s.tonight.reservations), `${s.tonight.persons} personne${s.tonight.persons > 1 ? "s" : ""} attendue${s.tonight.persons > 1 ? "s" : ""}`],
-      ["Remplissage ce soir", `${s.peakOccupancy} %`, `créneau le plus chargé · capacité ${data.capacity}`],
-      ["7 prochains jours", String(s.week.reservations), `${s.week.persons} personnes`],
-      ["Annulations (30 j)", String(s.cancelled30.total), `dont ${s.cancelled30.byClient} par les clients`],
+      ["Réservations", String(data.totals.reservations), "actives"],
+      ["Personnes", String(data.totals.persons), "attendues"],
+      ["Pic", `${data.totals.peak}/${data.capacity}`, "présents en même temps"],
     ];
-    const box = $("#kpis");
-    box.innerHTML = "";
+    const kbox = $("#kpis");
+    kbox.className = "kpis kpis--3";
+    kbox.innerHTML = "";
     kpis.forEach(([label, value, sub]) => {
       const k = el("div", "kpi");
       k.append(el("p", "kpi__label", label), el("p", "kpi__value", value), el("p", "kpi__sub", sub));
-      box.appendChild(k);
+      kbox.appendChild(k);
     });
-    $("#updated-at").textContent = `Mis à jour à ${new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: RULES.TZ }).format(new Date())}`;
+
+    renderBlocks();
+    renderOccupancy();
+    renderList();
   }
 
-  function renderStatusTabs() {
-    const box = $("#status-tabs");
+  function renderBlocks() {
+    const box = $("#blocks");
+    box.className = "blocks";
     box.innerHTML = "";
-    [["", "Toutes", data.counts.all], ...Object.keys(STATUS_LABEL).map((s) => [s, STATUS_LABEL[s], data.counts[s]])]
-      .forEach(([value, label, count]) => {
-        const b = el("button", "status-tab", `${label} (${count})`);
-        b.type = "button";
-        b.setAttribute("aria-pressed", String(statusFilter === value));
-        b.addEventListener("click", () => { statusFilter = value; load(); });
-        box.appendChild(b);
+    data.blocks.forEach((b) => {
+      const item = el("div", "block-item");
+      const label = el("span");
+      label.append(el("strong", null, b.heure_debut ? `Bloqué ${b.heure_debut} – ${b.heure_fin}` : "Journée bloquée"));
+      if (b.motif) label.append(` · ${b.motif}`);
+      const del = el("button", null, "Débloquer");
+      del.type = "button";
+      del.addEventListener("click", async () => {
+        try {
+          await api(`/api/admin/blocks?id=${encodeURIComponent(b.id)}`, { method: "DELETE" });
+          toast("Blocage supprimé");
+          load();
+        } catch (err) { if (!err.silent) toast("Erreur, réessayez.", true); }
       });
+      item.append(label, del);
+      box.appendChild(item);
+    });
   }
 
-  function render() {
-    renderKpis();
-    renderStatusTabs();
-    const days = $("#days");
-    days.innerHTML = "";
-    const rows = data.reservations;
-    $("#list-status").textContent = rows.length ? "" : "Aucune réservation pour ces critères.";
-
-    // Regroupement par soirée (date de réservation)
-    const byDay = new Map();
-    rows.forEach((r) => {
-      if (!byDay.has(r.date)) byDay.set(r.date, []);
-      byDay.get(r.date).push(r);
+  function renderOccupancy() {
+    const box = $("#occupancy-rows");
+    box.innerHTML = "";
+    $("#occupancy").hidden = !data.slots.length;
+    data.slots.forEach((s) => {
+      const row = el("div", "occ" + (s.blocked ? " is-blocked" : ""));
+      const ratio = Math.min(s.present / data.capacity, 1);
+      const bar = el("div", "occ__bar" + (ratio >= 1 ? " is-full" : ratio >= .8 ? " is-high" : ""));
+      const fill = el("span");
+      fill.style.width = `${Math.round(ratio * 100)}%`;
+      bar.appendChild(fill);
+      row.append(
+        el("span", "occ__time", s.time),
+        bar,
+        el("span", "occ__present", `${s.present}/${data.capacity}`),
+        el("span", "occ__arr", s.blocked ? "bloqué" : s.arriving ? `+${s.arriving} arr.` : "")
+      );
+      row.title = `${s.time} : ${s.present} personnes présentes, ${s.arriving} arrivées`;
+      box.appendChild(row);
     });
+  }
 
-    byDay.forEach((list, date) => {
-      const persons = (statuses) => list.filter((r) => statuses.includes(r.statut)).reduce((n, r) => n + r.personnes, 0);
-      const expected = persons(ACTIVE);
-      const section = el("section", "day");
-      const head = el("div", "day__head");
-      head.appendChild(el("h2", "day__title", formatDay(date)));
-      const count = el("p", "day__count");
-      count.append(el("strong", null, `${expected} pers.`), ` attendues · ${list.filter((r) => ACTIVE.includes(r.statut)).length} réservation(s)`);
-      head.appendChild(count);
-      section.appendChild(head);
-      list.forEach((r) => section.appendChild(card(r)));
-      days.appendChild(section);
-    });
+  function renderList() {
+    const list = $("#list");
+    list.innerHTML = "";
+    $("#list-status").textContent = data.reservations.length ? "" : "Aucune réservation pour cette soirée.";
+    data.reservations.forEach((r) => list.appendChild(card(r)));
   }
 
   function card(r) {
@@ -201,7 +211,9 @@
     const top = el("div", "resa__top");
     top.appendChild(el("span", "resa__time", r.heure));
     const who = el("div", "resa__who");
-    who.appendChild(el("div", "resa__ref", r.reference));
+    const ref = el("div", "resa__ref", r.reference);
+    if (r.source === "telephone") ref.appendChild(el("span", "source-tag", "Téléphone"));
+    who.appendChild(ref);
     who.appendChild(el("div", "resa__name", r.nom));
     who.appendChild(el("div", "resa__persons", `${r.personnes} personne${r.personnes > 1 ? "s" : ""} · ${String(r.langue).toUpperCase()}`));
     top.appendChild(who);
@@ -211,24 +223,19 @@
     const contact = el("div", "resa__contact");
     const tel = el("a", null, r.telephone);
     tel.href = `tel:${r.telephone.replace(/[^\d+]/g, "")}`;
-    const mail = el("a", null, r.email);
-    mail.href = `mailto:${r.email}`;
-    contact.append(tel, mail);
+    contact.appendChild(tel);
+    if (r.email) {
+      const mail = el("a", null, r.email);
+      mail.href = `mailto:${r.email}`;
+      contact.appendChild(mail);
+    }
     c.appendChild(contact);
 
-    const extras = el("div", "resa__extras");
-    if (r.espace && zoneName(r.espace)) extras.append(lineOf("Espace", zoneName(r.espace)));
-    if ((r.precommande || []).length) {
-      extras.append(lineOf("Pré-commande", r.precommande.map((l) => `${l.quantite} × ${l.nom}`).join(", ") + ` · ${eur(Number(r.total_estime))}`));
-    }
-    if (extras.childElementCount) c.appendChild(extras);
-
     if (r.message) c.appendChild(el("p", "resa__msg", r.message));
-    const meta = `Réservée le ${formatCreated(r.cree_le)}` +
+    const meta = `Réservée le ${fmtCreated(r.cree_le)}` +
       (r.statut === "annulee" && r.annule_par ? ` · annulée par ${r.annule_par === "client" ? "le client" : "le bar"}` : "");
     c.appendChild(el("p", "resa__meta", meta));
 
-    // Menu de statut (comme sur le site de location)
     const actions = el("div", "resa__actions");
     const select = el("select", "status-select");
     select.setAttribute("aria-label", `Statut de ${r.reference}`);
@@ -240,35 +247,31 @@
     select.value = r.statut;
     select.addEventListener("change", () => setStatus(r, select.value, select));
     actions.appendChild(select);
+    if (["en_attente", "confirmee", "en_cours"].includes(r.statut)) {
+      const cancel = el("button", "btn btn--danger btn--small", "Annuler");
+      cancel.type = "button";
+      cancel.addEventListener("click", () => setStatus(r, "annulee", select));
+      actions.appendChild(cancel);
+    }
     c.appendChild(actions);
     return c;
   }
 
-  function lineOf(label, value) {
-    const p = el("p");
-    p.append(el("span", null, `${label} : `), value);
-    return p;
-  }
-
   async function setStatus(r, statut, select) {
-    if (statut === "annulee" &&
-        !window.confirm(`Annuler la réservation ${r.reference} de ${r.nom} (${r.heure}, ${r.personnes} pers.) ?\nLe client sera prévenu par email.`)) {
+    if (statut === "annulee" && !window.confirm(
+      `Annuler la réservation ${r.reference} de ${r.nom} (${r.heure}, ${r.personnes} pers.) ?` +
+      (r.email ? "\nLe client sera prévenu par email." : "\n(Pas d'email : prévenez le client par téléphone.)"))) {
       select.value = r.statut;
       return;
     }
     select.disabled = true;
     try {
-      const json = await api("/api/admin/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: r.id, statut }),
-      });
-      Object.assign(r, json.reservation);
+      const json = await postJson("/api/admin/status", { id: r.id, statut });
       const label = STATUS_LABEL[statut];
-      if (json.emailSent === true) toast(`Statut : ${label} — email envoyé à ${r.nom}`);
-      else if (json.emailSent === false && !json.unchanged) toast(`Statut : ${label}, mais l'email n'a pas pu partir. Prévenez le client par téléphone.`, true);
+      if (json.emailSent === true) toast(`${label} — email envoyé à ${r.nom}`);
+      else if (json.emailSent === false && !json.unchanged) toast(`${label}, mais l'email n'a pas pu partir. Prévenez le client par téléphone.`, true);
       else toast(`Statut : ${label}`);
-      load(); // met à jour les compteurs et indicateurs
+      load();
     } catch (err) {
       if (!err.silent) toast("Erreur, la modification n'a pas été enregistrée. Réessayez.", true);
       select.value = r.statut;
@@ -276,18 +279,140 @@
     }
   }
 
-  /* ---------- Événements ---------- */
+  /* ---------- Fenêtres : ajout, blocage, capacité ---------- */
+
+  $$("dialog [data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
+  const formError = (id, msg) => { const p = $(id); p.textContent = msg || ""; p.hidden = !msg; };
+  const fillSelect = (select, values, selected) => {
+    select.innerHTML = "";
+    values.forEach((v) => { const o = el("option", null, v); o.value = v; select.appendChild(o); });
+    if (selected && values.includes(selected)) select.value = selected;
+  };
+
+  // Ajout manuel
+  $("#open-add").addEventListener("click", () => {
+    const slots = RULES.daySlots(CONFIG, date);
+    if (!slots.length) { toast("Le bar est fermé ce jour-là (horaires de config.js).", true); return; }
+    $("#add-form").reset();
+    fillSelect($("#add-time"), slots, slots.find((s) => s >= "20:00") || slots[0]);
+    $("#add-day").textContent = fmtDay(date);
+    formError("#add-error");
+    $("#add-dialog").showModal();
+    $("#add-name").focus();
+  });
+
+  async function submitAdd(force) {
+    const body = {
+      date,
+      time: $("#add-time").value,
+      persons: Number($("#add-persons").value),
+      name: $("#add-name").value.trim(),
+      phone: $("#add-phone").value.trim(),
+      email: $("#add-email").value.trim(),
+      message: $("#add-message").value.trim(),
+      lang: $("#add-lang").value,
+      sendEmail: $("#add-send").checked,
+      force,
+    };
+    try {
+      const json = await postJson("/api/admin/reservations", body);
+      $("#add-dialog").close();
+      toast(`Réservation ${json.reference} ajoutée` + (json.emailSent === true ? " — email envoyé" : json.emailSent === false ? " (email non envoyé)" : ""), json.emailSent === false);
+      load();
+    } catch (err) {
+      if (err.silent) return;
+      if (err.status === 409 && !force) {
+        const why = err.body.error === "blocked" ? "Ce créneau est bloqué." : "Ce créneau est complet.";
+        if (window.confirm(`${why}\nAjouter la réservation quand même ?`)) submitAdd(true);
+        return;
+      }
+      if (err.status === 422) {
+        const f = err.body.fields || {};
+        const msgs = { name: "nom (2 caractères min.)", phone: "téléphone", email: "email", persons: "personnes (1 à 50)", time: "heure", date: "date" };
+        formError("#add-error", "À corriger : " + Object.keys(f).map((k) => msgs[k] || k).join(", "));
+        return;
+      }
+      formError("#add-error", "Erreur, réessayez.");
+    }
+  }
+  $("#add-form").addEventListener("submit", (e) => { e.preventDefault(); submitAdd(false); });
+
+  // Blocage
+  function updateBlockRange() {
+    const slots = RULES.daySlots(CONFIG, date);
+    const range = RULES.dayRange(CONFIG, RULES.weekdayOf(date));
+    const from = $("#block-from").value || slots[0];
+    const ends = [...slots, range ? RULES.fromMinutes(range.close) : null].filter(Boolean)
+      .filter((t) => RULES.eveningOrder(t) > RULES.eveningOrder(from));
+    const prev = $("#block-to").value;
+    fillSelect($("#block-to"), ends, prev || ends[ends.length - 1]);
+  }
+  $("#open-block").addEventListener("click", () => {
+    $("#block-form").reset();
+    const slots = RULES.daySlots(CONFIG, date);
+    fillSelect($("#block-from"), slots, slots[0]);
+    $("#block-to").innerHTML = "";
+    updateBlockRange();
+    $("#block-range").hidden = true;
+    $$('input[name="block-type"][value="range"]')[0].disabled = !slots.length;
+    $("#block-day").textContent = fmtDay(date);
+    formError("#block-error");
+    $("#block-dialog").showModal();
+  });
+  $$('input[name="block-type"]').forEach((r) => r.addEventListener("change", () => {
+    $("#block-range").hidden = $('input[name="block-type"]:checked').value !== "range";
+  }));
+  $("#block-from").addEventListener("change", () => { $("#block-to").value = ""; updateBlockRange(); });
+  $("#block-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const range = $('input[name="block-type"]:checked').value === "range";
+    try {
+      await postJson("/api/admin/blocks", {
+        date,
+        from: range ? $("#block-from").value : null,
+        to: range ? $("#block-to").value : null,
+        motif: $("#block-motif").value.trim(),
+      });
+      $("#block-dialog").close();
+      toast(range ? "Plage bloquée" : "Journée bloquée");
+      load();
+    } catch (err) {
+      if (!err.silent) formError("#block-error", err.message === "bad_range" ? "Plage horaire invalide." : "Erreur, réessayez.");
+    }
+  });
+
+  // Capacité
+  $("#open-settings").addEventListener("click", () => {
+    $("#settings-capacity").value = data ? data.capacity : "";
+    formError("#settings-error");
+    $("#settings-dialog").showModal();
+    $("#settings-capacity").select();
+  });
+  $("#settings-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const json = await postJson("/api/admin/settings", { capacity: Number($("#settings-capacity").value) });
+      $("#settings-dialog").close();
+      toast(`Capacité : ${json.capacity} personnes par créneau`);
+      load();
+    } catch (err) {
+      if (!err.silent) formError("#settings-error", "Indiquez un nombre entre 1 et 500.");
+    }
+  });
+
+  /* ---------- Navigation et connexion ---------- */
+
+  $("#day-prev").addEventListener("click", () => goTo(RULES.addDays(date, -1)));
+  $("#day-next").addEventListener("click", () => goTo(RULES.addDays(date, 1)));
+  $("#day-today").addEventListener("click", () => goTo(tonight()));
+  $("#day-picker").addEventListener("change", (e) => { if (e.target.value) goTo(e.target.value); });
 
   $("#login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("#login-submit");
     btn.disabled = true;
     try {
-      await api("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: $("#password").value }),
-      });
+      await postJson("/api/admin/login", { password: $("#password").value });
       $("#password").value = "";
       await load();
     } catch (err) {
@@ -305,31 +430,16 @@
   $("#logout").addEventListener("click", async () => {
     await fetch("/api/admin/login", { method: "DELETE", credentials: "same-origin" }).catch(() => {});
     data = null;
-    $("#days").innerHTML = "";
+    $("#list").innerHTML = "";
     showLogin();
   });
 
   $("#refresh").addEventListener("click", load);
 
-  function setRange(value) {
-    range = value;
-    $$(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.range === value)));
-    $("#filter-date").classList.toggle("is-active", value === "date");
-    if (value !== "date") $("#filter-date").value = "";
-    load();
-  }
-  $$(".chip").forEach((c) => c.addEventListener("click", () => setRange(c.dataset.range)));
-  $("#filter-date").addEventListener("change", () => setRange($("#filter-date").value ? "date" : "upcoming"));
-
-  let searchTimer;
-  $("#search").addEventListener("input", (e) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { search = e.target.value.trim(); load(); }, 300);
-  });
-
   // Actualisation automatique quand la page est visible
-  setInterval(() => { if (!document.hidden && !$("#list-view").hidden) load(); }, AUTO_REFRESH_MS);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("#list-view").hidden) load(); });
+  setInterval(() => { if (!document.hidden && !$("#day-view").hidden && !$("dialog[open]")) load(); }, AUTO_REFRESH_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("#day-view").hidden) load(); });
 
+  date = tonight();
   load();
 })();

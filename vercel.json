@@ -5,6 +5,16 @@
       "source": "/admin",
       "destination": "/admin/",
       "permanent": false
+    },
+    {
+      "source": "/reservation",
+      "destination": "/#reservation",
+      "permanent": false
+    },
+    {
+      "source": "/reservation/",
+      "destination": "/#reservation",
+      "permanent": false
     }
   ],
   "crons": [

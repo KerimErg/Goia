@@ -5,18 +5,16 @@ Site du bar à chicha **Le Goia** à Kehl, en français et en allemand : menu, r
 **Comment ça marche :**
 
 ```
-Client ──► panneau « Réservez votre table » (accueil) : date au calendrier, horaire, personnes
-       ──► /reservation/ : 4 étapes  1. Espace  2. Chichas  3. Coordonnées  4. Confirmation
-       ──► /api/reservations (Vercel) : vérifie tout, contrôle la capacité du créneau
+Client ──► section « Réserver » de l'accueil
+              1. nombre de personnes  2. jour (calendrier des 30 prochains jours)
+              3. créneau (places restantes en temps réel)  4. coordonnées
+       ──► /api/reservations (Vercel) : revérifie tout, contrôle les places dans la base
               ├─► Supabase : enregistre la réservation, CONFIRMÉE immédiatement (référence GO-XXXXXX)
               └─► Resend   : email de confirmation au client + notification au bar
-       ──► /reservation/confirmation/ : « C'est réservé ! » + lien pour annuler (jusqu'à 2 h avant)
-Vous   ──► /admin : tableau de bord, filtres, recherche, menu de statut
-              (annuler → email au client ; en attente → confirmée → email de confirmation)
+       ──► confirmation à l'écran ; lien « Gérer ma réservation » pour annuler (jusqu'à 2 h avant)
+Vous   ──► /admin : vue par jour, personnes par créneau, annuler, bloquer, ajouter (téléphone), capacité
 Chaque nuit ──► /api/cron/cleanup : supprime les réservations de plus de 6 mois (RGPD)
 ```
-
-Le parcours reprend celui du site de location (dépôt `KerimErg/location`) : panneau de recherche avec calendrier, réservation en étapes avec récapitulatif, confirmation immédiate avec référence, page « C'est réservé ! », annulation par le client, admin avec statuts.
 
 Tout fonctionne sur les **plans gratuits** de Vercel, Supabase et Resend.
 
@@ -24,21 +22,21 @@ Tout fonctionne sur les **plans gratuits** de Vercel, Supabase et Resend.
 
 ```
 index.html            Page principale (accueil, menu, réservation, infos)
-reservation/          Réservation en 4 étapes (/reservation/) et page de confirmation
-admin/                Panneau admin (/admin) : indicateurs, filtres, statuts
+reservation/confirmation/  Page « Gérer ma réservation » (lien envoyé par email)
+admin/                Panneau admin (/admin) : vue par jour, blocages, ajout manuel, capacité
 impressum.html        Mentions légales (obligatoire en Allemagne) — À COMPLÉTER
 datenschutz.html      Politique de confidentialité DSGVO/RGPD — À COMPLÉTER
 data/menu.json        ← La carte : produits et prix
-js/config.js          ← Téléphone, adresse, horaires, CAPACITÉ, espaces, délai d'annulation, réseaux
+js/config.js          ← Téléphone, adresse, horaires, règles de réservation (capacité, durée…), réseaux
 js/i18n.js            ← Tous les textes du site en FR et DE
 js/rules.js           Calcul des créneaux (partagé entre le site et le serveur)
-js/main.js            Logique de la page d'accueil (dont le panneau de réservation)
-js/wizard.js          Les 4 étapes de réservation
-js/confirmation.js    Page de confirmation / annulation
-js/calendar.js        Calendrier de choix de la date
+js/main.js            Logique de la page d'accueil
+js/booking.js         Réservation en direct (personnes, calendrier, créneaux, formulaire)
+js/lang.js            Gestion de la langue FR / DE
+js/confirmation.js    Page « Gérer ma réservation » (annulation)
 api/                  Fonctions serveur Vercel (réservations, admin, nettoyage)
 api/_lib/emails.js    Textes des emails automatiques (FR / DE)
-supabase/schema.sql   Création de la base de données (à exécuter une fois dans Supabase)
+supabase/schema.sql   Base de données : à exécuter dans Supabase (et à relancer après chaque mise à jour)
 vercel.json           Tâche planifiée de nettoyage + en-têtes de sécurité
 .env.example          Liste des variables d'environnement à créer dans Vercel
 css/, fonts/, images/ Design, polices, images
@@ -83,18 +81,21 @@ hours: {
 
 Tout se met à jour automatiquement à partir de ce fichier : le tableau des horaires (avec le badge « Ouvert maintenant »), les créneaux du formulaire (côté site **et** côté serveur), les liens d'appel et WhatsApp, et les réseaux sociaux.
 
-Les options `reservation` règlent :
-- `slotMinutes` : l'intervalle entre deux créneaux (30 min) ;
-- `lastSlotBeforeClose` : le dernier créneau avant la fermeture ;
-- `maxDaysAhead` : jusqu'à combien de jours à l'avance on peut réserver ;
-- `maxPersons` : le maximum de personnes **par réservation** ;
-- `maxPersonsPerSlot` : la **capacité**, c'est-à-dire le total de personnes acceptées **par créneau horaire** (réservations en attente, confirmées et en cours). Quand un créneau est plein, il apparaît « complet » et le client se voit proposer les horaires libres les plus proches ;
-- `cancelHoursBefore` : jusqu'à combien d'heures avant le client peut **annuler en ligne** (2 par défaut) ;
-- `preorderMaxPerItem` : quantité maximale par parfum dans la pré-commande.
+Les options `reservation` règlent la réservation en ligne :
 
-Les **espaces** proposés à l'étape 1 (`zones`) : « Peu importe », « Salon lounge », « Terrasse », « Carré privé » (dès 6 personnes). Ce sont de simples préférences : la capacité reste celle du créneau. Modifiez les noms et descriptions, supprimez un espace, ou écrivez `zones: []` pour retirer complètement cette étape.
+| Réglage | Par défaut | Rôle |
+|---|---|---|
+| `slotMinutes` | 30 | un créneau toutes les 30 minutes |
+| `lastSlotBeforeClose` | 60 | dernier créneau 1 h avant la fermeture |
+| `maxDaysAhead` | 30 | réservation sur les 30 prochains jours |
+| `maxPersons` | 10 | maximum de personnes par réservation en ligne |
+| `maxPersonsPerSlot` | 40 | **capacité** : personnes présentes en même temps. Elle se règle aussi dans l'admin (bouton « Capacité »), qui a priorité. |
+| `durationMinutes` | 120 | une réservation occupe sa place pendant 2 h (elle compte sur tous les créneaux qu'elle chevauche) |
+| `minLeadMinutes` | 60 | pas de réservation à moins d'1 h à l'avance |
+| `fewSeatsThreshold` | 8 | « Plus que X places » s'affiche à partir de ce nombre |
+| `cancelHoursBefore` | 2 | le client peut annuler en ligne jusqu'à 2 h avant |
 
-La **pré-commande** (étape 2) reprend automatiquement les chichas de `data/menu.json` (catégorie `chichas`) avec leurs prix. Le serveur recalcule toujours les prix : un client ne peut pas les modifier. Une chicha par personne au maximum.
+**Exemple :** avec une capacité de 40, si 40 personnes ont réservé à 21:00, les créneaux de 19:30 à 22:30 sont complets : une réservation à 19:30 serait encore là à 21:00. 23:00 est de nouveau libre.
 
 > Ce fichier est public (il est lu par le navigateur) : n'y mettez **jamais** de mot de passe ni de clé.
 
@@ -165,7 +166,7 @@ Le plan gratuit de Resend (à ce jour : 3 000 emails par mois, 100 par jour) suf
 
 ### Étape 4 — Tester
 
-1. Ouvrez votre site → faites une réservation avec votre propre email. Vous arrivez sur « C'est réservé ! » et recevez **deux emails** (la confirmation avec le bouton « Gérer ma réservation », et la notification au bar).
+1. Ouvrez votre site, section **Réserver** → faites une réservation avec votre propre email. Le message « C'est réservé ! » s'affiche et vous recevez **deux emails** (la confirmation avec le bouton « Gérer ma réservation », et la notification au bar).
 2. Ouvrez `https://votre-site/admin` → entrez `ADMIN_PASSWORD` → la réservation apparaît « Confirmée ».
 3. Depuis l'email, cliquez sur « Gérer ma réservation » puis **Annuler la réservation** : vous recevez l'email d'annulation et le bar est prévenu.
 4. En cas de souci : Vercel → votre projet → **Logs**. Les erreurs y sont expliquées en clair (« RESEND_API_KEY manquant », « Resend a refusé l'envoi »…).
@@ -174,39 +175,44 @@ Le plan gratuit de Resend (à ce jour : 3 000 emails par mois, 100 par jour) suf
 
 ## 5. Le parcours client
 
-1. **Panneau « Réservez votre table »** (section Réserver de l'accueil) : la date se choisit dans un calendrier (jours passés, jours de fermeture et dates trop lointaines grisés), puis l'horaire (les créneaux pleins sont marqués « complet ») et le nombre de personnes avec − / +.
-2. **Les 4 étapes** (`/reservation/`), avec le récapitulatif toujours visible (à droite sur ordinateur, en bas sur téléphone) :
-   1. **Espace** : cartes à choisir, « Peu importe » est recommandé.
-   2. **Chichas** : pré-commande facultative, avec l'estimation du total à régler sur place.
-   3. **Coordonnées** : nom, téléphone, email, message, cases 18+ et confidentialité.
-   4. **Confirmation** : vérification de tout, puis **Confirmer la réservation**. Il n'y a pas de paiement en ligne.
-3. **Confirmation immédiate** s'il reste de la place : la page « C'est réservé, Léa ! » affiche la référence (ex. `GO-7KQ2MX`) et le client reçoit l'email. Si quelqu'un a pris la dernière place entre-temps, le client voit les horaires encore libres et peut en choisir un d'un clic.
-4. **Gérer ma réservation** : le lien de l'email rouvre la page de confirmation, qui permet d'**annuler gratuitement** jusqu'à `cancelHoursBefore` heures avant. Ensuite, il faut appeler. Il n'y a pas de compte client : le lien personnel suffit.
+Tout se passe dans la section **Réserver** de l'accueil, sans changer de page :
+
+1. **Combien êtes-vous ?** de 1 à 10. Au-delà, le client est invité à appeler.
+2. **Calendrier des 30 prochains jours** :
+   - jours fermés grisés ;
+   - jours sans aucune place pour ce nombre de personnes marqués **Complet** ;
+   - les autres jours sont cliquables.
+3. **Créneaux du jour** sous forme de boutons :
+   - « Plus que X places » quand il en reste peu ;
+   - grisés et non cliquables s'ils sont complets, passés (moins d'1 h à l'avance) ou bloqués ;
+   - seuls les créneaux avec assez de places pour le groupe sont cliquables ;
+   - les disponibilités se rafraîchissent toutes seules toutes les 30 secondes (indicateur « En temps réel »).
+4. **Coordonnées** : nom, téléphone, email, message facultatif, cases 18+ et confidentialité, puis **Confirmer la réservation**.
+5. **Confirmation immédiate** s'il reste de la place : message à l'écran avec la référence (ex. `GO-7KQ2MX`) et email de confirmation automatique.
+6. **Si quelqu'un a pris la place entre-temps** (le serveur revérifie au moment de l'envoi, deux personnes ne peuvent jamais prendre la dernière place) : message clair, créneaux rafraîchis, et le formulaire garde ce que le client a déjà saisi.
+
+Le lien **« Gérer ma réservation »** (à l'écran et dans l'email) permet d'annuler gratuitement jusqu'à `cancelHoursBefore` heures avant ; ensuite, il faut appeler. Une réservation annulée libère sa place immédiatement.
 
 ## 6. Utiliser le panneau admin (`/admin`)
 
-- **Tableau de bord** : réservations et personnes ce soir, remplissage du créneau le plus chargé, 7 prochains jours, annulations des 30 derniers jours.
-- **Période** : Ce soir, Demain, À venir, ou une date précise.
-- **Statuts** avec compteurs : Toutes, En attente, Confirmée, En cours (clients sur place), Terminée, Annulée.
-- **Recherche** par référence, nom, email ou téléphone.
-- Chaque soirée affiche le **nombre de personnes attendues**.
-- **Menu de statut** sur chaque réservation :
-  - « Annulée » envoie automatiquement un email d'annulation au client, dans sa langue (une confirmation est demandée avant) ;
-  - passer une réservation « En attente » à « Confirmée » envoie l'email de confirmation, avec un nouveau lien de gestion ;
-  - « En cours » et « Terminée » servent au suivi pendant la soirée et n'envoient pas d'email.
-- La liste se met à jour toute seule toutes les 2 minutes.
-- Astuce : sur iPhone ou Android, ouvrez `/admin` puis « Ajouter à l'écran d'accueil » pour l'avoir comme une appli.
+- **Vue par jour** : flèches ‹ › pour changer de jour, bouton « Ce soir », ou une date au calendrier. En tête de page : nombre de réservations, de personnes et pic de personnes présentes.
+- **Personnes par créneau** : pour chaque créneau, les personnes présentes (en tenant compte des 2 h), le remplissage par rapport à la capacité et les arrivées.
+- **Liste des réservations** triée par heure, avec téléphone (cliquable), email, message. Les réservations prises dans l'admin portent l'étiquette « Téléphone ».
+- **Annuler** : le client reçoit automatiquement un email d'annulation dans sa langue, et la place est libérée. Le menu de statut permet aussi de suivre la soirée (En cours, Terminée).
+- **+ Ajouter une réservation** (prise par téléphone) : heure, personnes, nom, téléphone, email facultatif (avec ou sans email de confirmation). Elle compte dans les disponibilités. Si le créneau est complet ou bloqué, l'admin demande s'il faut l'ajouter quand même.
+- **Bloquer** une journée entière (fermeture exceptionnelle) ou une plage horaire (soirée privée), avec un motif. Les créneaux bloqués ne sont plus proposés en ligne ; « Débloquer » les rouvre. Les réservations déjà prises ne sont pas annulées automatiquement.
+- **Capacité** : nombre de personnes présentes en même temps. Le changement s'applique immédiatement au site.
+- La page se met à jour toute seule chaque minute. Astuce : sur téléphone, « Ajouter à l'écran d'accueil » pour l'avoir comme une appli.
 - La session dure 12 h. Pour déconnecter tout le monde, changez `ADMIN_PASSWORD` dans Vercel puis redéployez.
-
-Vous pouvez aussi consulter les données dans Supabase → **Table Editor → reservations**.
 
 ## 7. Protection anti-spam
 
 - **Champ piège invisible** : un robot qui le remplit reçoit un faux « OK », et rien n'est enregistré.
 - Un formulaire envoyé en **moins de 3 secondes** est ignoré de la même façon.
 - **Limitation** : au maximum 3 réservations par heure depuis une même connexion, et 3 par jour pour une même adresse email.
+- La fonction `/api/disponibilites` ne renvoie que des horaires et des nombres de places, **jamais** de nom, téléphone ou email.
 - Connexion admin : au maximum 10 tentatives par quart d'heure.
-- Tous les champs sont **revérifiés par le serveur** (date passée, créneau inexistant, espace non autorisé, parfum inconnu, prix, case 18+ non cochée…), et la capacité est contrôlée **dans la base de données**. Même deux clients qui valident exactement en même temps ne peuvent pas dépasser la capacité.
+- Tous les champs sont **revérifiés par le serveur** (date passée, créneau inexistant ou à moins d'1 h, case 18+ non cochée…), et la capacité est contrôlée **dans la base de données**. Même deux clients qui valident exactement en même temps ne peuvent pas dépasser la capacité.
 
 Pour modifier ces limites : `LIMITS` dans `api/reservations.js`.
 
@@ -233,10 +239,11 @@ Achetez un domaine (ex. `le-goia.de`), ajoutez-le dans Vercel (**Settings → Do
 
 ## 11. Avant la mise en ligne : checklist
 
-- [ ] Supabase : projet créé (région Frankfurt), `supabase/schema.sql` exécuté (à relancer si vous l'aviez exécuté avec une version précédente : il met la base à jour sans perte)
+- [ ] Supabase : projet créé (région Frankfurt), `supabase/schema.sql` exécuté **en entier** (à relancer après chaque mise à jour du site : il met la base à jour sans perte)
 - [ ] Resend : domaine vérifié, clé API créée
 - [ ] Vercel : les 7 variables d'environnement ajoutées, puis **Redeploy**
-- [ ] `js/config.js` : vrai téléphone, WhatsApp, email, adresse, horaires, **capacité par créneau** (`maxPersonsPerSlot`), **espaces** (`zones`), délai d'annulation, liens Instagram et TikTok
+- [ ] `js/config.js` : vrai téléphone, WhatsApp, email, adresse, horaires, règles de réservation, liens Instagram et TikTok
+- [ ] `/admin` : vérifier la **capacité** par créneau
 - [ ] `index.html` : bloc Schema.org et nom de domaine
 - [ ] `impressum.html` et `datenschutz.html` : tous les champs `[ … ]` surlignés en doré (dont la région Supabase)
 - [ ] DPA acceptés chez Vercel, Supabase et Resend
